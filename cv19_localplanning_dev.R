@@ -243,8 +243,13 @@ outi <- mod$run(tz)
 
 ## check fit
 ylmz <- c(1,max(css,UR*outi[1:length(css),'incidence']))
-plot(1:length(css),UR*outi[1:length(css),'incidence'],type='l',log='y',ylim = ylmz)
+pdf(here::here('plots/FitExplain.pdf'))
+plot(1:length(css),UR*outi[1:length(css),'incidence'],type='l',log='y',ylim = ylmz,
+     xlab='days',ylab='log daily confirmed cases')
 points(1:length(css),css,col=c(rep(2,lkdnpt),rep(1,(length(css)-lkdnpt))))
+text(10,100,'Red points fix R0 & initial state',col=2)
+text(10,200,'Black points fix intervention effect')
+dev.off()
 
 ## real scale
 plot(1:length(css),UR*outi[1:length(css),'incidence'],type='l',
@@ -443,11 +448,11 @@ ggsave(GP4,filename = pnm,w=8,h=6)
 
 
 All <- ggarrange(GP1,GA,GP4,ncol=1)
-pnm <- glue(here::here('plots')) + '/SAll_' + td + '.pdf'       #
+pnm <- glue(here::here('plots')) + '/All_SEIR' + td + '.pdf'       #
 ggexport(All,filename=pnm)
 
 All2 <- ggarrange(GP1,GA,GP4,ncol=1,nrow=3,heights = c(0.9,1.25,1))
-pnm <- glue(here::here('plots')) + '/SAll_S_' + td + '.pdf'       #
+pnm <- glue(here::here('plots')) + '/SAll_SEIR_' + td + '.pdf'       #
 ggexport(All2,filename=pnm,width=7,height = 18)
 
 ## save out data too
