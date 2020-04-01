@@ -370,12 +370,18 @@ PM[quantity=='hosp',value:=mn.hosp.stay*(value),by=.(quantity,cases.over.confirm
 PM[quantity=='ccadm',value:=mn.cc.stay*(value),by=.(quantity,cases.over.confirmed)]
 
 ## max labels for graph
-MX <- PM[cases.over.confirmed=='1',.(value=max(value,na.rm=TRUE)),by=quantity]
+MX <- PM[cases.over.confirmed=='10',.(value=max(value,na.rm=TRUE)),by=quantity]
 hmax <- MX[quantity=='hosp',value]
-dmax <- PM[cases.over.confirmed=='1' & quantity=='hosp' & value==hmax,date]
+dmax <- PM[cases.over.confirmed=='10' & quantity=='hosp' & value==hmax,date]
 MX[,value:=format(signif(value,3),big.mark=',')]
+## values from other
+valt <- PM[cases.over.confirmed=='1' & quantity=='ccadm',
+           .(value=max(value,na.rm=TRUE))]
+valt <- format(signif(valt,3),big.mark=',')
+MX <- MX[order(quantity)]
 MX[,lbl:=c('critical care beds','cumulative deaths',
            'hospital beds\n(including critical care)','cumulative cases')]
+MX[quantity=='ccadm',lbl:=paste0(lbl,' (',valt,' if all cases confirmed)')]
 MX[,lbl:=paste0(value,' ',lbl)]
 MX[,date:=rep(dmax,4)]
 MX[,value:=rep(hmax,4) + 1e3]
@@ -398,7 +404,8 @@ GP4 <- ggplot(PM[date<=dmy('15/07/2020') & value>0],
                      values=cbbPalette[1:4])+
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(legend.position = c(0.15, 0.7),legend.direction='vertical') +
-  annotate('text',x=dmax,y=MX[,exp(mean(log(value)))],label='Max:',hjust=1.5,col=2)+
+  annotate('text',x=dmax,y=MX[,max(value)*2],
+           label='Max (1/10 confirmed):',hjust=0,col=2)+
   annotation_logticks(sides='lr') +
   annotate('segment',x=dmax,xend=dmax,yend=1,y=hmax,lty=2,col=2)+
   annotate('text',x=dmax,y=1,label=paste0(dmax),hjust=1,col=2)+
