@@ -48,7 +48,8 @@ if(file.exists(fn)){
 
 lcl <- 'Sheffield'                      #locale
 lkd <- '23/03/2020'                     #lockdown date
-ndys <- 3                               #data fitted to most recent N days
+lkdnpt <- 21                            #before intervention signal
+ndys <- length(UKC[,unique(date)])-lkdnpt #data fitted to most recent N days=days since lkdnpt
 
 
 ## parameters etc for later
