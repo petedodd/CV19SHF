@@ -48,7 +48,7 @@ if(file.exists(fn)){
 
 lcl <- 'Sheffield'                      #locale
 lkd <- '23/03/2020'                     #lockdown date
-lkdnpt <- 21                            #before intervention signal
+lkdnpt <- 21                #before intervention signal (or consider 16=actual lockdown)
 ndys <- length(UKC[,unique(date)])-lkdnpt #data fitted to most recent N days=days since lkdnpt
 
 
@@ -88,14 +88,17 @@ UKT <- UKC[type=='Country',.(cases=sum(confirm)),by=date]; UKT[,Population:='UK'
 UKS <- UKC[UTLA==lcl,.(cases=sum(confirm)),by=date]; UKS[,Population:=lcl]
 UKB <- rbind(UKT,UKS)
 
+
 ## doubling calculation
-UKB[,dys:=dmy(date)-min(dmy(date))]
-growth <- UKB[dmy(date)>=max(dmy(date))-days(ndys),
+UKB[,date:=dmy(date)]
+UKB[,dys:=date-min(date)]
+growth <- UKB[date>=date-days(ndys),
 {mod <- lm(log(1+cases)~dys);
   list(slope=coef(mod)['dys'],
        slope.lo=confint(mod,'dys',level=0.95)[1],
        slope.hi=confint(mod,'dys',level=0.95)[2])},
   by=Population]
+
 growth[,doubling:=log(2)/slope];
 growth[,doubling.lo:=log(2)/slope.hi];
 growth[,doubling.hi:=log(2)/slope.lo]
@@ -124,20 +127,30 @@ GP1 <- ggplot(UKB,
   scale_y_log10(label=comma,breaks=log_breaks(n=10)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(legend.position = c(0.25, 0.9),legend.direction='horizontal') + 
-  annotate('rect',xmin=lkd,xmax=max(UKB$date),ymin=0,ymax=Inf,alpha=0.1)+
+  annotate('rect',xmin=dmy(lkd),xmax=max(UKB$date),ymin=0,ymax=Inf,alpha=0.1)+
   annotation_logticks(sides='lr') +
-  annotate('text',x=xd,y=1,label='lockdown') +
-  annotate('text',x=xd,y=0.25*growth$loc[1],col=2,hjust=1,
-           label='Lockdown effects may be yet to appear') +
-  geom_text(data=growth,aes(x=xd2,y=loc,label=txt,col=Population),show.legend = FALSE) +
+  annotate('text',x=dmy(xd),y=1,label='lockdown') +
+  ## annotate('text',x=dmy(xd),y=0.25*growth$loc[1],col=2,hjust=1,
+  ##          label='Lockdown effects may be yet to appear') +
+  geom_text(data=growth,aes(x=dmy(xd2),y=loc,label=txt,col=Population),
+            show.legend = FALSE) +
   ggtitle('A) Growth rates in Sheffield and UK') +
   xlab('Date') + ylab('Daily confirmed COVID-19 cases (log scale)')
-## GP1
+GP1
 
 ggsave(GP1,file=pnm,w=7,h=5)
 
+## difference with start added & -ve -> 0
+df1 <- function(x){
+  x <- c(x[1],diff(x))
+  x[x<0] <- 0
+  x
+}
 
 ## make data for sheffield prediction
+UKB[,cases:=df1(cases),by=Population]   #introduce diff
+UKB <- UKB[dmy(UKB$date)!=min(dmy(UKB$date))]
+
 UKS <- UKB[Population=='Sheffield']
 UKS[,dta:=TRUE]
 dts <- min(UKS$date)
@@ -228,7 +241,7 @@ seiriLL <- function(x){
 ## seiriLL(c(0,1,-0.1))                    #test
 ## pnts
 
-
+## compare sheffield
 UR <- 0.075 #UK reporting: https://cmmid.github.io/topics/covid19/severity/global_cfr_estimates.html
 resi <- optim(par=c(0,1,0),fn=seiriLL,control = list(fnscale=-1),hessian=TRUE) #ML
 
@@ -241,20 +254,28 @@ outi <- mod$run(tz)
 ## plot(outi)
 ## par(mfrow=c(1,1))
 
+## plot(1:length(css),css,col=c(rep(2,lkdnpt),rep(1,(length(css)-lkdnpt))))
+
 ## check fit
 ylmz <- c(1,max(css,UR*outi[1:length(css),'incidence']))
-pdf(here::here('plots/FitExplain.pdf'))
-plot(1:length(css),UR*outi[1:length(css),'incidence'],type='l',log='y',ylim = ylmz,
-     xlab='days',ylab='log daily confirmed cases')
-points(1:length(css),css,col=c(rep(2,lkdnpt),rep(1,(length(css)-lkdnpt))))
-text(10,100,'Red points fix R0 & initial state',col=2)
-text(10,200,'Black points fix intervention effect')
-dev.off()
+
+## plot(1:length(css),UR*outi[1:length(css),'incidence'],type='l',log='y',ylim = ylmz,
+##      xlab='days',ylab='log daily confirmed cases')
+## points(1:length(css),css,col=c(rep(2,lkdnpt),rep(1,(length(css)-lkdnpt))))
+
 
 ## real scale
+pdf(here::here('plots/FitExplain.pdf'))
+
 plot(1:length(css),UR*outi[1:length(css),'incidence'],type='l',
-     ylim=c(0,max(css,UR*outi[1:length(css),'incidence'])))
+     ylim=c(0,max(css,UR*outi[1:length(css),'incidence'])),
+     xlab='days',ylab='log daily confirmed cases')
 points(1:length(css),css,col=c(rep(2,lkdnpt),rep(1,(length(css)-lkdnpt))))
+
+text(10,40,'Red points fix R0 & initial state',col=2)
+text(10,80,'Black points fix intervention effect')
+
+dev.off()
 
 ## extrapolation
 plot(tz,UR*outi[,'incidence'],type='l')
@@ -269,6 +290,8 @@ PP <- ggplot(LA,aes(x=t,y=notes)) +
   geom_point(data=pntsd) +
   geom_line(aes(t,trueincidence),col=2)
 PP
+LA[,max(trueincidence)]
+LA[,sum(trueincidence)]
 
 PP + scale_y_log10()
 
@@ -349,6 +372,11 @@ GP3 <- ggplot(SM[date<=dmy('15/07/2020')],
   theme(legend.position = c(0.85, 0.5),legend.direction='vertical') + 
   annotation_logticks(sides='lr') +
   geom_vline(xintercept = ymd(pnts$date[lkdnpt]),col=2,lty=2)+
+  annotate('text',x=ymd(pnts$date[lkdnpt])-days(5),y=100,col=2,
+           label=paste0('R0 = ',round(exp(resi$par[2]),digits=1)))+
+  annotate('text',x=ymd(pnts$date[lkdnpt])+days(10),y=140,col=2,
+           label=paste0('transmission reduction = ',
+                        round((1-exp(resi$par[3]))*1e2,digits=0),"%"))+
   ggtitle('B) Projected daily numbers for Sheffield')
 
 GP3
@@ -406,6 +434,8 @@ PM[quantity=='ccadm',value:=mn.cc.stay*(value),by=.(quantity)]
 MX <- PM[,.(value=max(value,na.rm=TRUE)),by=quantity]
 hmax <- MX[quantity=='hosp',value]
 dmax <- PM[ quantity=='hosp' & value==hmax,date]
+dpk <- SM[quantity=='deaths',max(value)]
+dpk <- format(signif(dpk,3),big.mark=',')
 MX[,value:=format(signif(value,3),big.mark=',')]
 MX <- MX[order(quantity)]
 MX <- MX[quantity!='cases']
@@ -413,11 +443,15 @@ MX[,lbl:=c('cumulative cases','hospital beds\n(including critical care)',
            'critical care beds','cumulative deaths'
            )]
 MX[,lbl:=paste0(value,' ',lbl)]
+MX[quantity=='deaths',lbl:=paste0(lbl," (",dpk,"/day peak)")]
 MX[,date:=rep(dmax,4)]
 MX[,value:=rep(hmax,4) + 0e3]
 MX[,value:=value * c(3^3,3^2,3^{1},3^0)]
 ## MX[,grp:='truecases1'];MX[,cases.over.confirmed:='1']
 MX
+
+dmid <- min(PM$date) + days(max(PM$date)-min(PM$date))/2
+MX$date <- dmid
 
 ## prevalence plot
 GP4 <- ggplot(PM[date<=dmy('15/07/2020') & value>0 & quantity!='cases'],
@@ -434,7 +468,7 @@ GP4 <- ggplot(PM[date<=dmy('15/07/2020') & value>0 & quantity!='cases'],
                      values=cbbPalette[1:4])+
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(legend.position = c(0.15, 0.7),legend.direction='vertical') +
-  annotate('text',x=dmax,y=MX[,exp(mean(log(value)))],label='Max:',hjust=1.5,col=2)+
+  annotate('text',x=dmid,y=MX[,exp(mean(log(value)))],label='Max:',hjust=1.5,col=2)+
   annotation_logticks(sides='lr') +
   annotate('segment',x=dmax,xend=dmax,yend=1,y=hmax,lty=2,col=2)+
   annotate('text',x=dmax,y=1,label=paste0(dmax),hjust=1,col=2)+
