@@ -116,7 +116,7 @@ xd <- dmy(lkd)+days(1)                  #marker for lockdown
 xd <- format(xd,"%d/%m/%Y")
 xd2 <- dmy(lkd)+days(2)                  #marker
 xd2 <- format(xd2,"%d/%m/%Y")
-pnm <- glue(here::here('plots')) + '/P1_' + td + '.pdf'       #
+pnm <- glue(here::here('plots')) + '/S1_' + td + '.pdf'       #
 
 
 ## plot
@@ -130,15 +130,15 @@ GP1 <- ggplot(UKB,
   annotate('rect',xmin=dmy(lkd),xmax=max(UKB$date),ymin=0,ymax=Inf,alpha=0.1)+
   annotation_logticks(sides='lr') +
   annotate('text',x=dmy(xd),y=1,label='lockdown') +
-  ## annotate('text',x=dmy(xd),y=0.25*growth$loc[1],col=2,hjust=1,
-  ##          label='Lockdown effects may be yet to appear') +
   geom_text(data=growth,aes(x=dmy(xd2),y=loc,label=txt,col=Population),
             show.legend = FALSE) +
+  geom_vline(xintercept = ymd(UKB$date[lkdnpt+1]),col=2,lty=2)+
   ggtitle('A) Growth rates in Sheffield and UK') +
-  xlab('Date') + ylab('Daily confirmed COVID-19 cases (log scale)')
+  xlab('Date') + ylab('Cumulative confirmed COVID-19 cases (log scale)')
 GP1
 
 ggsave(GP1,file=pnm,w=7,h=5)
+GP1c <- copy(GP1)
 
 ## difference with start added & -ve -> 0
 df1 <- function(x){
@@ -149,34 +149,35 @@ df1 <- function(x){
 
 ## make data for sheffield prediction
 UKB[,cases:=df1(cases),by=Population]   #introduce diff
-UKB <- UKB[dmy(UKB$date)!=min(dmy(UKB$date))]
+UKB <- UKB[date!=min(date)]
+
+ggplot(UKB,aes(date,cases,col=Population)) + geom_point() + scale_y_log10() + geom_vline(xintercept = ymd(UKB$date[lkdnpt]),col=2,lty=2)
+
 
 UKS <- UKB[Population=='Sheffield']
 UKS[,dta:=TRUE]
 dts <- min(UKS$date)
-dts <- seq(from=max(dmy(UKS$date)) + days(1),by='day',length.out = 100)
-SF <- data.table(date=format(dts,"%d/%m/%Y"),Population='Sheffield',
+dts <- seq(from=max((UKS$date)) + days(1),by='day',length.out = 100)
+SF <- data.table(date=dts,#format(dts,"%d/%m/%Y"),
+                 Population='Sheffield',
                  cases=NA,dta=FALSE)
 SF <- rbind(UKS,SF,fill=TRUE)
-SF[,dys:=dmy(date)-min(dmy(date))]
+SF[,dys:=(date)-min((date))]
 ## sheffield pop
 shfpop <- 616210
-## md <- lm(data=SF[as.Date(date)>=lkd & !is.na(cases)],log(1+cases) ~ dys)
-md <- lm(data=SF[dmy(date)>=ymd(td)-days(ndys) & !is.na(cases)],
-         log(1+cases) ~ dys)
 ldy <- SF[!is.na(cases),max(dys)]
 SF[,ddys:=dys-ldy]
 ldt <- SF[ddys==0,cases]
 who1 <- SF[,which(ddys==0)]              #last one
-cfs <- c(coef(md)['dys'],confint(md,'dys',level=0.95)[1:2])
 SF$cases <- as.numeric(SF$cases)
 
 
 ## point data
 pnts <- UKS[dta==TRUE]
 pnts[,c('quantity','growth','grp'):=list('cases',NA,1)]
-pnts[,date:=dmy(date)]
+pnts[,date:=(date)]
 pnts[,value:=cases]
+
 
 tz <- seq(from=0,to=100,by=1)
 css <- pnts[,(cases)]                   #t = dys in this data
@@ -340,7 +341,7 @@ UKS[,ccadm:=propcc*truecases];
 UKS[,deaths:=propd*truecases]; 
 
 ## reformat
-SM <- melt(UKS[,.(date=dmy(date),
+SM <- melt(UKS[,.(date=(date),
                   cases,truecases,hosp,ccadm,deaths
                   )],id.vars = 'date')
 
@@ -446,7 +447,7 @@ MX[,lbl:=paste0(value,' ',lbl)]
 MX[quantity=='deaths',lbl:=paste0(lbl," (",dpk,"/day peak)")]
 MX[,date:=rep(dmax,4)]
 MX[,value:=rep(hmax,4) + 0e3]
-MX[,value:=value * c(3^3,3^2,3^{1},3^0)]
+MX[,value:=value * c(3^3,3^2,3^{1},2*3^0)]
 ## MX[,grp:='truecases1'];MX[,cases.over.confirmed:='1']
 MX
 
@@ -481,11 +482,11 @@ ggsave(GP4,filename = pnm,w=8,h=6)
 
 
 
-All <- ggarrange(GP1,GA,GP4,ncol=1)
+All <- ggarrange(GP1c,GA,GP4,ncol=1)
 pnm <- glue(here::here('plots')) + '/All_SEIR' + td + '.pdf'       #
 ggexport(All,filename=pnm)
 
-All2 <- ggarrange(GP1,GA,GP4,ncol=1,nrow=3,heights = c(0.9,1.25,1))
+All2 <- ggarrange(GP1c,GA,GP4,ncol=1,nrow=3,heights = c(0.9,1.25,1))
 pnm <- glue(here::here('plots')) + '/SAll_SEIR_' + td + '.pdf'       #
 ggexport(All2,filename=pnm,width=7,height = 18)
 
