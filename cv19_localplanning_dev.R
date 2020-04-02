@@ -179,7 +179,7 @@ pnts[,date:=(date)]
 pnts[,value:=cases]
 
 
-tz <- seq(from=0,to=100,by=1)
+tz <- seq(from=0,to=120,by=1)
 css <- pnts[,(cases)]                   #t = dys in this data
 Rinit <- pnts[,sum(cases)]
 
@@ -272,7 +272,6 @@ plot(1:length(css),UR*outi[1:length(css),'incidence'],type='l',
      ylim=c(0,max(css,UR*outi[1:length(css),'incidence'])),
      xlab='days',ylab='log daily confirmed cases')
 points(1:length(css),css,col=c(rep(2,lkdnpt),rep(1,(length(css)-lkdnpt))))
-
 text(10,40,'Red points fix R0 & initial state',col=2)
 text(10,80,'Black points fix intervention effect')
 
@@ -282,16 +281,29 @@ dev.off()
 plot(tz,UR*outi[,'incidence'],type='l')
 points(1:length(css),css,col=c(rep(2,lkdnpt),rep(1,(length(css)-lkdnpt))))
 
+## different UR scenario
+UR2 <- 2*UR                             #scenario
+UR <- UR2                               #need like this as LL gets from global
+resi2 <- optim(par=c(0,1,0),fn=seiriLL,control = list(fnscale=-1),hessian=TRUE) #ML
+y[1:lkdnpt] <- 1
+y[(1+lkdnpt):length(y)] <- exp(resi2$par[3])
+mod2 <- seiri(I0=exp(resi2$par[1]),R0=exp(resi2$par[2]),Rinit = Rinit/UR2,y=y,tt=tz)
+outi2 <- mod2$run(tz)
+UR <- UR2/2                             #reset
 
 pntsd <- data.table(id=1,t=1:nrow(pnts),notes=pnts$cases)
 LA <- data.table(notes = UR*outi[,'incidence'],trueincidence=outi[,'incidence'],t=tz)
+LA2 <- data.table(notes = UR2*outi2[,'incidence'],trueincidence=outi2[,'incidence'],t=tz)
 
 PP <- ggplot(LA,aes(x=t,y=notes)) +
   geom_line()  +
   geom_point(data=pntsd) +
-  geom_line(aes(t,trueincidence),col=2)
+  geom_line(aes(t,trueincidence),col=2)+
+  geom_line(data=LA2,aes(t,trueincidence),col=4)
+
 PP
 LA[,max(trueincidence)]
+LA2[,max(trueincidence)]
 LA[,sum(trueincidence)]
 
 PP + scale_y_log10()
@@ -325,11 +337,13 @@ PP + scale_y_log10()
 ## LA[,id:=rep(1:length(tz),each=nrow(PMZ))]
 ## LA
 
-LA
+LA[,confirmed:='7.5%']
+LA2[,confirmed:='15%']
+LA <- rbind(LA,LA2)
 SF
 ou3 <- merge(SF,LA,by.x='dys',by.y='t')
 
-UKS <- ou3[,.(date,
+UKS <- ou3[,.(date,confirmed,
               cases=notes,
               truecases=trueincidence,
               dys)]
@@ -341,16 +355,18 @@ UKS[,ccadm:=propcc*truecases];
 UKS[,deaths:=propd*truecases]; 
 
 ## reformat
-SM <- melt(UKS[,.(date=(date),
+SM <- melt(UKS[,.(date=(date),confirmed,
                   cases,truecases,hosp,ccadm,deaths
-                  )],id.vars = 'date')
+                  )],id.vars = c('date','confirmed'))
 
-names(SM)[2] <- 'quantity'
+names(SM)[3] <- 'quantity'
+pnts[,confirmed:=NA]
 
 ## introduce delays
 SM[quantity=='deaths',date:=date + D2D]
 SM[quantity=='hosp',date:=date + D2H]
 SM[quantity=='ccadm',date:=date + D2CC]
+
 
 ## case projections on real scale
 lkdl <- dmy(lkd)
@@ -359,9 +375,9 @@ pnm <- glue(here::here('plots')) + '/S2_' + td + '.pdf'       #
 
 ## incidence plot
 GP3 <- ggplot(SM[date<=dmy('15/07/2020')],
-              aes(date,value,col=quantity)) +
+              aes(date,value,col=quantity,lty=confirmed)) +
   geom_point(data=pnts) +
-  geom_line()+
+  geom_line() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))  +
   xlab('Date') + ylab('Daily incidence of quantity (log scale)') +
   scale_y_log10(label=comma,breaks=log_breaks(n=10),limits=c(1,NA))  +
@@ -369,17 +385,17 @@ GP3 <- ggplot(SM[date<=dmy('15/07/2020')],
                      labels=c('true incidence','confirmed cases','hospital admissions',
                               'critical care admissions','deaths'),
                      values=cbbPalette[1:5])+
+  scale_linetype_manual(breaks=c("7.5%","15%"),values=2:1)+
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(legend.position = c(0.85, 0.5),legend.direction='vertical') + 
   annotation_logticks(sides='lr') +
   geom_vline(xintercept = ymd(pnts$date[lkdnpt]),col=2,lty=2)+
-  annotate('text',x=ymd(pnts$date[lkdnpt])-days(5),y=100,col=2,
+  annotate('text',x=ymd(pnts$date[lkdnpt])-days(5),y=150,col=2,
            label=paste0('R0 = ',round(exp(resi$par[2]),digits=1)))+
-  annotate('text',x=ymd(pnts$date[lkdnpt])+days(10),y=140,col=2,
+  annotate('text',x=ymd(pnts$date[lkdnpt])+days(10),y=200,col=2,
            label=paste0('transmission reduction = ',
                         round((1-exp(resi$par[3]))*1e2,digits=0),"%"))+
   ggtitle('B) Projected daily numbers for Sheffield')
-
 GP3
 
 ## parameter table
@@ -403,7 +419,7 @@ TXT <- TXT + '\nMean stays:(hospitalisation, critical care) = \n('
 TXT <- TXT + mn.hosp.stay + ', ' + mn.cc.stay + ') days'
 TXT <- TXT + '\nProjection of incidence via SEIR model:'
 TXT <- TXT + '\n - change in beta on dashed line = ' + round(1e2*(1-exp(resi$par[3])))+ '% redn'
-TXT <- TXT + '\n - 7.5% infections confirmed'
+TXT <- TXT + '\n - 7.5% infections confirmed (or 2x this)'
 TXT <- TXT + '\n - (latent,infectious) periods = ( ' + lat + ',' + pinf + ') days'
 GE <- ggplot(data.frame(x=c(0,1),y=c(0,1)),aes(x,y)) +
   geom_point(col=NA)+
@@ -432,10 +448,10 @@ PM[quantity=='hosp',value:=mn.hosp.stay*(value),by=.(quantity)]
 PM[quantity=='ccadm',value:=mn.cc.stay*(value),by=.(quantity)]
 
 ## max labels for graph
-MX <- PM[,.(value=max(value,na.rm=TRUE)),by=quantity]
+MX <- PM[confirmed=="7.5%",.(value=max(value,na.rm=TRUE)),by=quantity]
 hmax <- MX[quantity=='hosp',value]
-dmax <- PM[ quantity=='hosp' & value==hmax,date]
-dpk <- SM[quantity=='deaths',max(value)]
+dmax <- PM[confirmed=="7.5%" &  quantity=='hosp' & value==hmax,date]
+dpk <- SM[confirmed=="7.5%" & quantity=='deaths',max(value)]
 dpk <- format(signif(dpk,3),big.mark=',')
 MX[,value:=format(signif(value,3),big.mark=',')]
 MX <- MX[order(quantity)]
@@ -447,16 +463,16 @@ MX[,lbl:=paste0(value,' ',lbl)]
 MX[quantity=='deaths',lbl:=paste0(lbl," (",dpk,"/day peak)")]
 MX[,date:=rep(dmax,4)]
 MX[,value:=rep(hmax,4) + 0e3]
-MX[,value:=value * c(3^3,3^2,3^{1},2*3^0)]
+MX[,value:=2*value * c(3^3,3^2,3^{1},2*3^0)]
 ## MX[,grp:='truecases1'];MX[,cases.over.confirmed:='1']
 MX
-
-dmid <- min(PM$date) + days(max(PM$date)-min(PM$date))/2
+dmid <- min(PM$date) + days(max(PM$date)-min(PM$date))/2.5
 MX$date <- dmid
+MX[,confirmed:=NA]
 
 ## prevalence plot
 GP4 <- ggplot(PM[date<=dmy('15/07/2020') & value>0 & quantity!='cases'],
-              aes(date,value,col=quantity)) +
+              aes(date,value,col=quantity,lty=confirmed)) +
   geom_line() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))  +
   xlab('Date') + ylab('Prevalence of quantity (log scale)') +
@@ -467,6 +483,7 @@ GP4 <- ggplot(PM[date<=dmy('15/07/2020') & value>0 & quantity!='cases'],
                               'hospital beds',
                               'critical care beds','cumulative deaths'),
                      values=cbbPalette[1:4])+
+  scale_linetype_manual(breaks=c("7.5%","15%"),values=2:1)+
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(legend.position = c(0.15, 0.7),legend.direction='vertical') +
   annotate('text',x=dmid,y=MX[,exp(mean(log(value)))],label='Max:',hjust=1.5,col=2)+
