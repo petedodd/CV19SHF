@@ -309,38 +309,44 @@ LA[,sum(trueincidence)]
 PP + scale_y_log10()
 
 
-## ## checks and uncertainty
-## ## this is rather an under-estimate
-## ## uncertainty over parameter estimates
-## Sig <- solve(-resi$hessian)
-## PMZ <- mvrnorm(200,resi$par,Sigma=Sig)
-## LA <- list()
-## for(i in 1:nrow(PMZ)){
-##   y[1:lkdnpt] <- 1; y[(1+lkdnpt):length(y)] <- exp(resi$par[3])
-##   mod <- seiri(I0=exp(resi$par[1]),R0=exp(resi$par[2]),Rinit = Rinit/UR,y=y,tt=tz)
-##   outi <- mod$run(tz)
-##   LA[[i]] <- as.data.table(mod$run(tz))
-## }
+## checks and uncertainty
+## this is rather an under-estimate
+## uncertainty over parameter estimates
+Sig <- solve(-resi$hessian)
+Sig2 <- solve(-resi2$hessian)
+PMZ <- mvrnorm(200,resi$par,Sigma=Sig)
+PMZ2 <- mvrnorm(200,resi2$par,Sigma=Sig2)
+LU2 <- LU <- list()
+for(i in 1:nrow(PMZ)){
+  y[1:lkdnpt] <- 1
+  y[(1+lkdnpt):length(y)] <- exp(resi$par[3])
+  mod <- seiri(I0=exp(PMZ[i,1]),R0=exp(PMZ[i,2]),Rinit = Rinit/UR,y=y,tt=tz)
+  LU[[i]] <- as.data.table(mod$run(tz))
+  LU[[i]][,id:=i]
+  y[1:lkdnpt] <- 1
+  y[(1+lkdnpt):length(y)] <- exp(resi2$par[3])
+  mod <- seiri(I0=exp(PMZ2[i,1]),R0=exp(PMZ2[i,2]),Rinit = Rinit/UR,y=y,tt=tz)
+  LU2[[i]] <- as.data.table(mod$run(tz))
+  LU2[[i]][,id:=i]
+}
+LU <- rbindlist(LU); LU2 <- rbindlist(LU2)
+LU[,confirmed:='7.5%']; LU2[,confirmed:='15%']
+LU <- rbind(LU,LU2)
+ou <- merge(SF,LU,by.x='dys',by.y='t')
 
-## ggplot(LA,aes(x=t,y=incidence*UR,group=id)) +
-##   geom_line()  +
-##   geom_point(data=pntsd,aes(t,notes)) +
-##   scale_y_log10()
+pnts[,id:=1]
 
+PP <- ggplot(LU,aes(x=t,y=incidence*UR,group=id)) +
+  geom_line(col='grey',alpha=.2)  +
+  geom_point(data=pnts,aes(as.numeric(dys),value))
 
-## LAM <- LA[,.(mid=median(incidence),
-##             lo=quantile(incidence,.025),
-##             hi=quantile(incidence,.975)),
-##          by=t]
+PP
+PP + scale_y_log10()
 
-## LA <- rbindlist(LA)
-## LA[,id:=rep(1:length(tz),each=nrow(PMZ))]
-## LA
 
 LA[,confirmed:='7.5%']
 LA2[,confirmed:='15%']
 LA <- rbind(LA,LA2)
-SF
 ou3 <- merge(SF,LA,by.x='dys',by.y='t')
 
 UKS <- ou3[,.(date,confirmed,
@@ -348,24 +354,40 @@ UKS <- ou3[,.(date,confirmed,
               truecases=trueincidence,
               dys)]
 
+## version with multiple runs
+ou[,trueincidence:=incidence]
+ou[,notes:=incidence*UR]
+ou[confirmed=="15%",notes:=incidence*UR2]
+
+US <- ou[,.(date,confirmed,id,
+              cases=notes,
+              truecases=trueincidence,
+              dys)]
 
 ## calculate & delays
-UKS[,hosp:=proph*truecases];
-UKS[,ccadm:=propcc*truecases]; 
-UKS[,deaths:=propd*truecases]; 
+UKS[,hosp:=proph*truecases]; US[,hosp:=proph*truecases];
+UKS[,ccadm:=propcc*truecases]; US[,ccadm:=propcc*truecases]; 
+UKS[,deaths:=propd*truecases]; US[,deaths:=propd*truecases]; 
 
 ## reformat
 SM <- melt(UKS[,.(date=(date),confirmed,
                   cases,truecases,hosp,ccadm,deaths
                   )],id.vars = c('date','confirmed'))
-
 names(SM)[3] <- 'quantity'
 pnts[,confirmed:=NA]
 
+
+## reformat
+SU <- melt(US[,.(date=(date),confirmed,id,
+                  cases,truecases,hosp,ccadm,deaths
+                  )],id.vars = c('date','confirmed','id'))
+names(SU)[4] <- 'quantity'
+
+
 ## introduce delays
-SM[quantity=='deaths',date:=date + D2D]
-SM[quantity=='hosp',date:=date + D2H]
-SM[quantity=='ccadm',date:=date + D2CC]
+SM[quantity=='deaths',date:=date + D2D]; SU[quantity=='deaths',date:=date + D2D]
+SM[quantity=='hosp',date:=date + D2H]; SU[quantity=='hosp',date:=date + D2H]
+SM[quantity=='ccadm',date:=date + D2CC]; SU[quantity=='ccadm',date:=date + D2CC]
 
 
 ## case projections on real scale
@@ -442,10 +464,20 @@ PM <- PM[order(quantity,date)]
 ## calculate cumulatives
 PM[quantity%in%c('truecases','deaths'),
    value:=nac(value),by=.(quantity)]
-
 ## prevalence as simple incidence x duration
 PM[quantity=='hosp',value:=mn.hosp.stay*(value),by=.(quantity)]
 PM[quantity=='ccadm',value:=mn.cc.stay*(value),by=.(quantity)]
+
+## uncertainty version
+PU <- copy(SU)
+PU <- PU[order(quantity,date,id)]
+## calculate cumulatives
+PU[quantity%in%c('cases','truecases','deaths'),
+   value:=nac(value),by=.(quantity,id)]
+## prevalence as simple incidence x duration
+PU[quantity=='hosp',value:=mn.hosp.stay*(value),by=.(quantity,id)]
+PU[quantity=='ccadm',value:=mn.cc.stay*(value),by=.(quantity,id)]
+
 
 ## max labels for graph
 MX <- PM[confirmed=="7.5%",.(value=max(value,na.rm=TRUE)),by=quantity]
@@ -512,3 +544,75 @@ pnm <- glue(here::here('data')) + '/SPM_' + td + '.Rdata'       #
 save(PM,file = pnm)
 pnm <- glue(here::here('data')) + '/SSM_' + td + '.Rdata'       #
 save(SM,file = pnm)
+
+
+## --------  uncertainty outputs -------
+PUM <- PU[,.(mid=quantile(value,0.5),
+             hi=quantile(value,0.975),
+             lo=quantile(value,0.025)),
+          by=.(date,quantity,confirmed)]
+
+SUM <- SU[,.(mid=quantile(value,0.5),
+             hi=quantile(value,0.975),
+             lo=quantile(value,0.025)),
+          by=.(date,quantity,confirmed)]
+
+pnm <- glue(here::here('data')) + '/PUM_' + td + '.Rdata'       #
+save(PUM,file = pnm)
+pnm <- glue(here::here('data')) + '/SUM_' + td + '.Rdata'       #
+save(SUM,file = pnm)
+
+
+pnts[,c('hi','lo'):=NA_real_]
+pnts[,mid:=cases]
+
+## incidence plot
+GP3u <- ggplot(SUM[date<=dmy('15/07/2020')],
+              aes(date,mid,col=quantity,lty=confirmed)) +
+  geom_point(data=pnts) +
+  geom_line() +
+  geom_ribbon(aes(ymin=lo,ymax=hi,fill=confirmed),alpha=.2,col=NA)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  +
+  xlab('Date') + ylab('Daily incidence of quantity') +
+  scale_y_continuous(label=comma) + 
+  scale_color_manual(breaks=c('truecases','cases','hosp','ccadm','deaths'),
+                     labels=c('true incidence','confirmed cases','hospital admissions',
+                              'critical care admissions','deaths'),
+                     values=cbbPalette[1:5])+
+  scale_linetype_manual(breaks=c("7.5%","15%"),values=2:1)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  guides(col=guide_legend(ncol=2))+ guides(fill=FALSE)+
+  theme(legend.position = c(0.85, 0.25),legend.direction='vertical') +
+  geom_vline(xintercept = ymd(pnts$date[lkdnpt]),col=2,lty=2)+
+  ggtitle('B) Projected daily numbers for Sheffield\nReal scale with 95% MLE CIs') +
+  facet_wrap(scales='free_y',~quantity)
+GP3u
+
+pnm <- glue(here::here('plots')) + '/IncU_' + td + '.pdf'       #
+ggsave(GP3u,filename = pnm)
+
+
+
+## prevalence plot
+GP4u <- ggplot(PUM[date<=dmy('15/07/2020') ],
+              aes(date,mid,col=quantity,lty=confirmed)) +
+  geom_line() +
+  geom_ribbon(aes(ymin=lo,ymax=hi,fill=confirmed),alpha=.2,col=NA)+  
+  xlab('Date') + ylab('Prevalence of quantity') +
+  scale_y_continuous(label=comma) +
+  scale_color_manual(breaks=c('truecases','cases','hosp','ccadm','deaths'),
+                     labels=c('cumulative cases','cumulative confirmed cases',
+                              'hospital beds',
+                              'critical care beds','cumulative deaths'),
+                     values=cbbPalette[1:5])+
+  scale_linetype_manual(breaks=c("7.5%","15%"),values=2:1)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  guides(col=guide_legend(ncol=2))+ guides(fill=FALSE)+
+  theme(legend.position = c(0.85, 0.25),legend.direction='vertical') +
+  ggtitle('C) Projected prevalent or cumulative numbers for Sheffield\nReal scale with 95% MLE CIs') +
+  expand_limits(x=PUM[,min(date)]) +
+  facet_wrap(scales='free_y',~quantity)
+GP4u
+
+pnm <- glue(here::here('plots')) + '/PrevU_' + td + '.pdf'       #
+ggsave(GP4u,filename = pnm)
