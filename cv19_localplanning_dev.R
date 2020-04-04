@@ -1,5 +1,6 @@
+## NOTE NOW DEPRECATED: sitrep version which uses additional data
 ## A simple analysis for local COVD-19 capacity forecasting
-## NB does not predict intervention effect, except via indications in data
+## this version uses public data only
 ## 28 March 2020
 ## p.j.dodd@sheffield.ac.uk
 
@@ -44,8 +45,6 @@ if(file.exists(fn)){
 }
 
 
-## UKD <- fread("https://raw.githubusercontent.com/emmadoughty/Daily_COVID-19/master/Data/deaths_by_area.csv")
-
 lcl <- 'Sheffield'                      #locale
 lkd <- '23/03/2020'                     #lockdown date
 lkdnpt <- 21                #before intervention signal (or consider 16=actual lockdown)
@@ -53,6 +52,12 @@ ndys <- length(UKC[,unique(date)])-lkdnpt #data fitted to most recent N days=day
 
 
 ## parameters etc for later
+## sitrep parms
+load(here::here('data/parm.delays.Rdata')) # from sitrep
+load(here::here('data/parm.bedprops.Rdata')) #from sitrep
+load(here::here('data/parm.hosparms.Rdata')) #from sitrep
+load(here::here('data/parm.o2props.Rdata')) #from sitrep
+
 ## demography etc from Chris Gibbon's work book
 ages <- c('0-9','10-19','20-29','30-39','40-49','50-59','60-69','70-79','80+')
 shfdemo <- c(0.107886922,0.115624544,0.188336768,0.139600136,0.11854238,0.122764966,
@@ -69,16 +74,14 @@ parms[,propcc:=sympto*symptohosp*hospcc/1e6] #proportion crit care
 parms[,propd:=IFR/1e2]                       #proportion who will die
 
 ## delay and parameter delays
-D2D <- days(20)                        #delay to death
-D2CC <- D2H <- days(10)                 #delay to hosp
-mn.hosp.stay <- 7                               #mean hosp stay
-mn.cc.stay <- 10                                #mean CC stay
-gt <- 6.5                               #generation time in days
+D2D <- days(round(delays$dC2D))                        #delay to death
+D2CC <- D2H <- days(round(delays$dC2H))                 #delay to hosp
+mn.cc.stay <- mn.hosp.stay <- hosparms$mid                #mean hosp stay
 
 ## mean parms for Sheffield pop
 proph <- parms[,weighted.mean(proph,w=demo)]
 propcc <- parms[,weighted.mean(propcc,w=demo)]
-propd <- parms[,weighted.mean(propd,w=demo)]
+propd <- parms[,weighted.mean(propd,w=demo)] #TODO check against sitrep
 
 
 ## mm <- lm(data=UKB[dmy(date)>=max(dmy(date))-days(ndys)],log(1+cases) ~dys)
@@ -173,11 +176,15 @@ SF$cases <- as.numeric(SF$cases)
 
 
 ## point data
+
+tmp <- UKC[UTLA=='Sheffield']
+tmp[,date:=dmy(date)]
 pnts <- UKS[dta==TRUE]
 pnts[,c('quantity','growth','grp'):=list('cases',NA,1)]
 pnts[,date:=(date)]
 pnts[,value:=cases]
-
+pnts <- merge(pnts,tmp[,.(date,confirm)],by='date')
+save(pnts,file=here::here('data/pnts.Rdata'))
 
 tz <- seq(from=0,to=120,by=1)
 css <- pnts[,(cases)]                   #t = dys in this data
@@ -239,6 +246,7 @@ seiriLL <- function(x){
   sum(dpois(css,UR*ecss,log=TRUE)) #last ndys data
 }
 
+## sum(dpois(tgts$cases,UR*ecss,log=TRUE)) ## + #cases
 ## seiriLL(c(0,1,-0.1))                    #test
 ## pnts
 
@@ -308,6 +316,8 @@ LA[,sum(trueincidence)]
 
 PP + scale_y_log10()
 
+exp(sum(resi$par[2:3]))
+exp(sum(resi2$par[2:3]))
 
 ## checks and uncertainty
 ## this is rather an under-estimate
@@ -319,7 +329,7 @@ PMZ2 <- mvrnorm(200,resi2$par,Sigma=Sig2)
 LU2 <- LU <- list()
 for(i in 1:nrow(PMZ)){
   y[1:lkdnpt] <- 1
-  y[(1+lkdnpt):length(y)] <- exp(resi$par[3])
+  y[(1+lkdnpt):length(y)] <- exp(PMZ[i,3])
   mod <- seiri(I0=exp(PMZ[i,1]),R0=exp(PMZ[i,2]),Rinit = Rinit/UR,y=y,tt=tz)
   LU[[i]] <- as.data.table(mod$run(tz))
   LU[[i]][,id:=i]
@@ -329,6 +339,7 @@ for(i in 1:nrow(PMZ)){
   LU2[[i]] <- as.data.table(mod$run(tz))
   LU2[[i]][,id:=i]
 }
+
 LU <- rbindlist(LU); LU2 <- rbindlist(LU2)
 LU[,confirmed:='7.5%']; LU2[,confirmed:='15%']
 LU <- rbind(LU,LU2)
@@ -336,12 +347,12 @@ ou <- merge(SF,LU,by.x='dys',by.y='t')
 
 pnts[,id:=1]
 
-PP <- ggplot(LU,aes(x=t,y=incidence*UR,group=id)) +
-  geom_line(col='grey',alpha=.2)  +
-  geom_point(data=pnts,aes(as.numeric(dys),value))
+## PP <- ggplot(LU[id==1 & confirmed=='15%'],aes(x=t,y=incidence*UR,group=id)) +
+##   geom_line(col='grey',alpha=.2)  +
+##   geom_point(data=pnts,aes(as.numeric(dys),value))
 
-PP
-PP + scale_y_log10()
+## PP
+## PP + scale_y_log10()
 
 
 LA[,confirmed:='7.5%']
@@ -369,6 +380,7 @@ UKS[,hosp:=proph*truecases]; US[,hosp:=proph*truecases];
 UKS[,ccadm:=propcc*truecases]; US[,ccadm:=propcc*truecases]; 
 UKS[,deaths:=propd*truecases]; US[,deaths:=propd*truecases]; 
 
+
 ## reformat
 SM <- melt(UKS[,.(date=(date),confirmed,
                   cases,truecases,hosp,ccadm,deaths
@@ -385,9 +397,11 @@ names(SU)[4] <- 'quantity'
 
 
 ## introduce delays
+D2D <- days(00); D2H <- days(7*0)       #TODO zero delays look best
 SM[quantity=='deaths',date:=date + D2D]; SU[quantity=='deaths',date:=date + D2D]
 SM[quantity=='hosp',date:=date + D2H]; SU[quantity=='hosp',date:=date + D2H]
 SM[quantity=='ccadm',date:=date + D2CC]; SU[quantity=='ccadm',date:=date + D2CC]
+
 
 
 ## case projections on real scale
@@ -498,7 +512,7 @@ MX[,value:=rep(hmax,4) + 0e3]
 MX[,value:=2*value * c(3^3,3^2,3^{1},2*3^0)]
 ## MX[,grp:='truecases1'];MX[,cases.over.confirmed:='1']
 MX
-dmid <- min(PM$date) + days(max(PM$date)-min(PM$date))/2.5
+dmid <- min(PM$date) + days(round((max(PM$date)-min(PM$date))/2.5))
 MX$date <- dmid
 MX[,confirmed:=NA]
 
@@ -562,6 +576,12 @@ save(PUM,file = pnm)
 pnm <- glue(here::here('data')) + '/SUM_' + td + '.Rdata'       #
 save(SUM,file = pnm)
 
+pnm <- glue(here::here('data')) + '/PU_' + td + '.Rdata'       #
+save(PU,file = pnm)
+pnm <- glue(here::here('data')) + '/SU_' + td + '.Rdata'       #
+save(SU,file = pnm)
+
+pnts
 
 pnts[,c('hi','lo'):=NA_real_]
 pnts[,mid:=cases]
@@ -616,3 +636,4 @@ GP4u
 
 pnm <- glue(here::here('plots')) + '/PrevU_' + td + '.pdf'       #
 ggsave(GP4u,filename = pnm)
+
