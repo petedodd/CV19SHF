@@ -18,6 +18,7 @@ library(curl)
 ## make sub directories
 if(!file.exists(here::here('data'))) dir.create(here::here('data'),showWarnings=FALSE)
 if(!file.exists(here::here('plots'))) dir.create(here::here('plots'),showWarnings=FALSE)
+if(!file.exists(here::here('figs'))) dir.create(here::here('figs'),showWarnings=FALSE)
 getdate <- function()glue(gsub('-','_',Sys.Date()))
 td <- getdate()                         #date stamp
 
@@ -161,7 +162,8 @@ for (j in names(tgts))
 tgts <- rbind(tgts,tmp1)
 save(tgts,file=here::here('data/tgts.Rdata'))
 
-
+tgts
+pnts
 
 ## new ODE version
 ## partially to cope with censoring and non-eqm
@@ -217,14 +219,10 @@ y[(1+lkdnpt):length(y)] <- HR
 css <- pnts[,(cases)]                   #t = dys in this data
 Rinit <- pnts[,sum(cases)]
 
-
 ## test
 UR <- 1                                 #underreporting
 mdi <- seirid(I0=exp(1),R0=4,Rinit = Rinit/UR,y=y,tt=tz,
                d2h=10,d2d=14,h2o=10,IFR=propd,HFR=proph)
-
-
-
 
 ## owi <- mdi$run(tz)
 ## plot(owi)
@@ -313,6 +311,30 @@ Sig <- solve(-resi$hessian)
 ## Sig2 <- solve(-resi2$hessian)
 PMZ <- mvrnorm(200,resi$par,Sigma=Sig)
 ## PMZ2 <- mvrnorm(200,resi2$par,Sigma=Sig2)
+
+## CIs
+Rzero <- exp(PMZ[,2])
+(Rzero <- c(mean=mean(Rzero),quantile(Rzero,.025),quantile(Rzero,.975)))
+Rzero <- round(Rzero,digits=1)
+Rzero <- paste0((Rzero[1])," (",Rzero[2],' to ',Rzero[3],")")
+cat(Rzero,file=here::here('data/Rzero.txt'))
+Effect <- 100*(1-exp(PMZ[,3]))
+(Effect <- c(mean=mean(Effect),quantile(Effect,.025),quantile(Effect,.975)))
+Effect <- round(Effect,digits=0)
+Effect <- paste0((Effect[1])," (",Effect[2],' to ',Effect[3],")")
+cat(Effect,file=here::here('data/Effect.txt'))
+Rnet <- exp(rowSums(PMZ[,2:3]))
+(Rnet <- c(mean=mean(Rnet),quantile(Rnet,.025),quantile(Rnet,.975)))
+Rnet <- round(Rnet,digits=1)
+Rnet <- paste0((Rnet[1])," (",Rnet[2],' to ',Rnet[3],")")
+cat(Rnet,file=here::here('data/Rnet.txt'))
+HFR <- exp(PMZ[,4])
+(HFR <- 100*c(mean=mean(HFR),quantile(HFR,.025),quantile(HFR,.975)))
+HFR <- round(HFR,digits=1)
+HFR <- paste0((HFR[1])," (",HFR[2],' to ',HFR[3],")")
+cat(HFR,file=here::here('data/HFR.txt'))
+
+
 LU2 <- LU <- list()
 for(i in 1:nrow(PMZ)){
   LU[[i]] <- as.data.table(dorun(PMZ[i,]))
