@@ -105,6 +105,37 @@ growth[,txt:=paste0('x2 every ',txt,' days\n(',
                     format(round(doubling.lo, 1), nsmall = 1),' to ',
                     format(round(doubling.hi, 1), nsmall = 1),')')]
 
+
+
+## plot annotation locations & filename
+xd <- dmy(lkd)+days(1)                  #marker for lockdown
+xd <- format(xd,"%d/%m/%Y")
+xd2 <- dmy(lkd)+days(2)                  #marker
+xd2 <- format(xd2,"%d/%m/%Y")
+pnm <- glue(here::here('plots')) + '/S1_' + td + '.pdf'       #
+
+
+## plot
+GP1 <- ggplot(UKB,
+       aes(date,cases,group=Population,col=Population)) +
+  geom_line() +
+  geom_point() +
+  scale_y_log10(label=comma,breaks=log_breaks(n=10)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(legend.position = c(0.25, 0.9),legend.direction='horizontal') + 
+  annotate('rect',xmin=dmy(lkd),xmax=max(UKB$date),ymin=0,ymax=Inf,alpha=0.1)+
+  annotation_logticks(sides='lr') +
+  annotate('text',x=dmy(xd),y=1,label='lockdown') +
+  geom_text(data=growth,aes(x=dmy(xd2),y=loc,label=txt,col=Population),
+            show.legend = FALSE) +
+  geom_vline(xintercept = ymd(UKB$date[lkdnpt+1]),col=2,lty=2)+
+  ggtitle('A) Growth rates in Sheffield and UK') +
+  xlab('Date') + ylab('Cumulative confirmed COVID-19 cases (log scale)')
+GP1
+
+ggsave(GP1,file=pnm,w=7,h=5)
+ggsave(GP1,file=here::here('figs/Trends.pdf'),w=7,h=5)
+
 ## make inference targets
 df1 <- function(x){
   x <- c(x[1],diff(x))

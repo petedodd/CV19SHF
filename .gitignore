@@ -4,3 +4,6 @@ data/*
 plots/*
 Rplots.pdf
 figs/*
+Report.pdf
+Report.tex
+auto/*
