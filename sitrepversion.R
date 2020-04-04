@@ -527,3 +527,9 @@ ggsave(GP4udL,filename = here::here('figs/PrevLog.pdf'))
 ## save most recent dates
 cat(max(pnts$date),file=here::here('data/maxdate_cases.txt'))
 cat(max(DM$date),file=here::here('data/maxdate_sitrep.txt'))
+
+
+## save output also
+fwrite(PUM[date<=dmy('15/07/2020') ],file=here::here('data/PrevData.csv'))
+fwrite(SUM[date<=dmy('15/07/2020') & !quantity %in% c('ccadm','truecases')],
+       file=here::here('data/IncData.csv'))
