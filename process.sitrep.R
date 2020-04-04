@@ -20,6 +20,8 @@ save(DM,file=here::here('data/DM.Rdata'))
 
 vrs <- DM[,unique(variable)]
 
+
+
 ## lab testing
 GPno <- ggplot(DM[variable %in% vrs[14:15]],
        aes(date,value,

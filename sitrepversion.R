@@ -1,0 +1,488 @@
+## new version to use additional private data
+## before running this, also run the sitrep updates
+## p.j.dodd@sheffield.ac.uk
+## --- load Libraries
+library(tidyr)
+library(ggplot2)
+library(ggpubr)
+library(data.table)
+library(here)
+library(glue)
+library(lubridate)
+library(scales)
+library(odin)
+library(MASS)
+library(curl)
+
+## --- set-up & utilities
+## make sub directories
+if(!file.exists(here::here('data'))) dir.create(here::here('data'),showWarnings=FALSE)
+if(!file.exists(here::here('plots'))) dir.create(here::here('plots'),showWarnings=FALSE)
+getdate <- function()glue(gsub('-','_',Sys.Date()))
+td <- getdate()                         #date stamp
+
+## for color consistency
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+shfc <- gg_color_hue(2)[1]              #sheffield color for consistency
+
+## get data
+## https://github.com/emmadoughty/Daily_COVID-19
+
+fn <- glue(here::here('data'))+ '/UKC_' + td + '.Rdata'
+if(file.exists(fn)){
+  load(fn)
+} else {
+  UKC <- fread("https://raw.githubusercontent.com/emmadoughty/Daily_COVID-19/master/Data/cases_by_utla.csv")
+  save(UKC,file=fn)
+}
+
+
+lcl <- 'Sheffield'                      #locale
+lkd <- '23/03/2020'                     #lockdown date
+lkdnpt <- 21                #before intervention signal (or consider 16=actual lockdown)
+ndys <- length(UKC[,unique(date)])-lkdnpt #data fitted to most recent N days=days since lkdnpt
+
+
+## parameters etc for later
+## sitrep parms
+load(here::here('data/parm.delays.Rdata')) # from sitrep
+load(here::here('data/parm.bedprops.Rdata')) #from sitrep
+load(here::here('data/parm.hosparms.Rdata')) #from sitrep
+load(here::here('data/parm.o2props.Rdata')) #from sitrep
+
+## demography etc from Chris Gibbon's work book
+ages <- c('0-9','10-19','20-29','30-39','40-49','50-59','60-69','70-79','80+')
+shfdemo <- c(0.107886922,0.115624544,0.188336768,0.139600136,0.11854238,0.122764966,
+             0.090433456,0.072074455,0.044736372)
+sympto <- c(66.00,66.00,66.00,66.00,66.00,66.00,66.00,66.00,66.00)
+symptohosp <- c(0.10,0.30,1.20,3.20,4.90,10.20,16.60,24.30,27.30)
+hospcc <- c(5.00,5.00,5.00,5.00,6.30,12.20,27.40,43.20,70.90)
+IFR <- c(0.00,0.01,0.00,0.08,0.15,0.60,2.20,5.10,9.30)
+
+parms <- data.table(ages=ages,demo=shfdemo,sympto=sympto,symptohosp=symptohosp,
+                    hospcc=hospcc,IFR=IFR)
+parms[,proph:=sympto*symptohosp/1e4]    #proportion hospitalized
+parms[,propcc:=sympto*symptohosp*hospcc/1e6] #proportion crit care
+parms[,propd:=IFR/1e2]                       #proportion who will die
+
+## mean parms for Sheffield pop
+proph <- parms[,weighted.mean(proph,w=demo)]
+propcc <- parms[,weighted.mean(propcc,w=demo)]
+propd <- parms[,weighted.mean(propd,w=demo)]
+
+## cases and growth
+## totals etc
+UKT <- UKC[type=='Country',.(cases=sum(confirm)),by=date]; UKT[,Population:='UK']
+UKS <- UKC[UTLA==lcl,.(cases=sum(confirm)),by=date]; UKS[,Population:=lcl]
+UKB <- rbind(UKT,UKS)
+
+
+## doubling calculation
+UKB[,date:=dmy(date)]
+UKB[,dys:=date-min(date)]
+growth <- UKB[date>=date-days(ndys),
+{mod <- lm(log(1+cases)~dys);
+  list(slope=coef(mod)['dys'],
+       slope.lo=confint(mod,'dys',level=0.95)[1],
+       slope.hi=confint(mod,'dys',level=0.95)[2])},
+  by=Population]
+
+growth[,doubling:=log(2)/slope];
+growth[,doubling.lo:=log(2)/slope.hi];
+growth[,doubling.hi:=log(2)/slope.lo]
+growth <- merge(growth,UKB[,.(mxc=max(cases)),by=Population],by='Population')
+growth[,loc:=mean(log(mxc))]
+growth[,loc:=loc/2 + log(mxc)/2]
+growth[,loc:=exp(loc)]                  #location for plot
+growth[,txt:=format(round(doubling, 1), nsmall = 1)]
+growth[,txt:=paste0('x2 every ',txt,' days\n(',
+                    format(round(doubling.lo, 1), nsmall = 1),' to ',
+                    format(round(doubling.hi, 1), nsmall = 1),')')]
+
+## make inference targets
+df1 <- function(x){
+  x <- c(x[1],diff(x))
+  x[x<0] <- 0
+  x
+}
+
+## make data for sheffield prediction
+UKB[,cases:=df1(cases),by=Population]   #introduce diff
+UKB <- UKB[date!=min(date)]
+
+
+UKS <- UKB[Population=='Sheffield']
+UKS[,dta:=TRUE]
+dts <- min(UKS$date)
+dts <- seq(from=max((UKS$date)) + days(1),by='day',length.out = 100)
+SF <- data.table(date=dts,#format(dts,"%d/%m/%Y"),
+                 Population='Sheffield',
+                 cases=NA,dta=FALSE)
+SF <- rbind(UKS,SF,fill=TRUE)
+SF[,dys:=(date)-min((date))]
+## sheffield pop
+shfpop <- 616210
+ldy <- SF[!is.na(cases),max(dys)]
+SF[,ddys:=dys-ldy]
+ldt <- SF[ddys==0,cases]
+who1 <- SF[,which(ddys==0)]              #last one
+SF$cases <- as.numeric(SF$cases)
+
+## case targets
+tmp <- UKC[UTLA=='Sheffield']
+tmp[,date:=dmy(date)]
+pnts <- UKS[dta==TRUE]
+pnts[,c('quantity','growth','grp'):=list('cases',NA,1)]
+pnts[,date:=(date)]
+pnts[,value:=cases]
+pnts <- merge(pnts,tmp[,.(date,confirm)],by='date')
+save(pnts,file=here::here('data/pnts.Rdata'))
+
+## sitrep targets
+load(here::here('data/DM.Rdata'))
+vrs <- DM[,unique(variable)]
+dss <- DM[variable==vrs[13],.(deaths=(value)),by=date]
+tgts <- dss
+nhsp <- DM[variable%in%vrs[8:9],.(newhosp=sum(value)),by=date]
+tgts <- merge(tgts,nhsp,by='date',all.x=TRUE)
+inhsp <- DM[variable%in%vrs[1:4],.(inhosp=sum(value)),by=date]
+disch <- DM[variable==vrs[10],.(disch=(value)),by=date]
+tgts <- merge(tgts,disch,by='date',all.x=TRUE)
+tgts <- merge(pnts[,.(date,cases)],tgts,by='date',all=TRUE)
+tmp1 <- tgts[date==max(date)]           #keep NA in case of mismatch on last day
+tgts <- tgts[date<max(date)]
+for (j in names(tgts))
+  set(tgts,which(is.na(tgts[[j]])),j,0)
+tgts <- rbind(tgts,tmp1)
+save(tgts,file=here::here('data/tgts.Rdata'))
+
+
+
+## new ODE version
+## partially to cope with censoring and non-eqm
+seirid <- odin::odin({
+  initial(S) <- N-I0 - Rinit
+  initial(E) <- I0/2
+  initial(I) <- I0/2
+  initial(R) <- Rinit
+  initial(dying) <- D0
+  initial(sick) <- K0
+  initial(hosp) <- 0
+  deriv(S) <- -beta*S*I/N
+  deriv(E) <- beta*S*I/N - E*nu
+  deriv(I) <- E*nu - I*nu2
+  deriv(R) <- +I*nu2
+  deriv(sick) <- E*nu*HFR - sick/d2h    #waiting state for hospitalised fraction
+  deriv(dying) <- E*nu*IFR - dying/d2d #copy state to capture delay to death
+  deriv(hosp) <- sick/d2h - hosp/h2o      #prevalence in hosp
+  output(incidence) <- E*nu             #linked to case detection
+  output(deaths) <- dying/d2d
+  output(admns) <- sick/d2h
+  output(disch) <- hosp/h2o
+  nu <- 1/lat
+  nu2 <- 1/pinf
+  beta <- R0*nu2*z
+  lat <- user(5.1)                       #latent time
+  pinf <- user(4.6)                      #infectious period
+  I0 <- user(361)                        #initial state
+  Rinit <- user(5)                      #initial recovered
+  R0 <- user(2.6)
+  N <- user(616210)
+  d2d <- user(14)                         #delay case to death
+  d2h <- user(10)                         #delay to hospn
+  h2o <- user(14)                         #
+  IFR <- user(1e-2)                       #IFR
+  HFR <- user(1e-2)                       #hosp fraction
+  D0 <- user(1)
+  K0 <- user(1)
+  z <- interpolate(tt, y)
+  tt[] <- user()
+  y[] <- user()
+  dim(tt) <- user()
+  dim(y) <- length(tt)
+},target='r')
+
+
+## testing
+tz <- seq(from=0,to=120,by=1)
+HR <- 0.5                               #hazard ratio of effect
+y <- tz
+y[1:lkdnpt] <- 1
+y[(1+lkdnpt):length(y)] <- HR
+css <- pnts[,(cases)]                   #t = dys in this data
+Rinit <- pnts[,sum(cases)]
+
+
+## test
+UR <- 1                                 #underreporting
+mdi <- seirid(I0=exp(1),R0=4,Rinit = Rinit/UR,y=y,tt=tz,
+               d2h=10,d2d=14,h2o=10,IFR=propd,HFR=proph)
+
+
+
+
+## owi <- mdi$run(tz)
+## plot(owi)
+## par(mfrow=c(1,1))
+
+css
+tgts$cases
+
+## run doer
+dorun <- function(x){
+  y[1:lkdnpt] <- 1
+  y[(1+lkdnpt):length(y)] <- exp(x[3])
+  md <- seirid(I0=exp(x[1]),R0=exp(x[2]),Rinit = Rinit/UR,y=y,tt=tz,
+               d2h=delays$dC2H,d2d=delays$dC2D,h2o=hosparms$mid,
+               IFR=propd,HFR=exp(x[4]))
+  md$run(tz)
+}
+
+seiridLL <- function(x,printbits=FALSE){
+  out <- dorun(x)
+  nd <- nrow(tgts)
+  ecss <- out[1:nd,'incidence']
+  disch <- out[1:nd,'disch']
+  admns <- out[1:nd,'admns']
+  dths <- out[1:nd,'deaths']
+  LL1 <- sum(dpois(tgts$cases,UR*ecss,log=TRUE),na.rm=TRUE)  #cases
+  LL2 <- sum(dpois(tgts$deaths,dths,log=TRUE),na.rm=TRUE)  #deaths
+  LL3 <- sum(dpois(tgts$newhosp,admns,log=TRUE),na.rm=TRUE)  #admission
+  LL4 <- 0#sum(dpois(tgts$disch,disch,log=TRUE),na.rm=TRUE)  #discharges
+  LL <- LL1 + LL2 + LL3 + LL4
+  if(printbits) print(c(LL1,LL2,LL3,LL4))
+  LL
+}
+
+## test
+seiridLL(c(0,1,-0.1,-2),printbits = TRUE)                    #test
+
+## compare sheffield
+UR <- 0.075*1
+resi <- optim(par=c(0,1,-0.1,-2),fn=seiridLL,
+              control = list(fnscale=-1),hessian=TRUE) #ML
+
+(Rzero <- exp(resi$par[2]))
+(Effect <- 100*(1-exp(resi$par[3])))
+(Rnet <- exp(sum(resi$par[2:3])))
+(HFR <- 1e2*exp(sum(resi$par[4])))
+
+cat(Rzero,file=here::here('data/Rzero.txt'))
+cat(Effect,file=here::here('data/Effect.txt'))
+cat(Rnet,file=here::here('data/Rnet.txt'))
+cat(HFR,file=here::here('data/HFR.txt'))
+cat(proph,file=here::here('data/HFRlit.txt'))
+
+
+xx <- resi$par
+seiridLL(xx)
+
+## MLE
+outi <- dorun(resi$par)
+LA <- as.data.table(outi)
+LA[,confirmed:='7.5%']
+LA[,id:=0.0]
+ou1 <- merge(SF,LA,by.x='dys',by.y='t')
+ou1[,trueincidence:=incidence]
+ou1[,notes:=incidence*UR]
+ou1[,ccadm:=propcc*trueincidence]        #to change
+ou1[,beds:=hosp]
+ou1[,hosp:=admns]
+US1 <- ou1[,.(date,confirmed,id,
+            cases=notes,
+            truecases=trueincidence,
+            hosp,ccadm,deaths,
+            dys)]
+## reformat
+SU1 <- melt(US1[,.(date=(date),confirmed,id,
+                  cases,truecases,hosp,ccadm,deaths
+                  )],id.vars = c('date','confirmed','id'))
+names(SU1)[4] <- 'quantity'
+SUM1 <- SU1[,.(mid=value,hi=value,lo=value),by=.(date,quantity,confirmed)]
+
+
+## checks and uncertainty
+## this is rather an under-estimate
+## uncertainty over parameter estimates
+Sig <- solve(-resi$hessian)
+## Sig2 <- solve(-resi2$hessian)
+PMZ <- mvrnorm(200,resi$par,Sigma=Sig)
+## PMZ2 <- mvrnorm(200,resi2$par,Sigma=Sig2)
+LU2 <- LU <- list()
+for(i in 1:nrow(PMZ)){
+  LU[[i]] <- as.data.table(dorun(PMZ[i,]))
+  LU[[i]][,id:=i]
+  ## y[1:lkdnpt] <- 1
+  ## y[(1+lkdnpt):length(y)] <- exp(resi2$par[3])
+  ## mod <- seiri(I0=exp(PMZ2[i,1]),R0=exp(PMZ2[i,2]),Rinit = Rinit/UR,y=y,tt=tz)
+  ## LU2[[i]] <- as.data.table(mod$run(tz))
+  ## LU2[[i]][,id:=i]
+}
+
+LU <- rbindlist(LU); ## LU2 <- rbindlist(LU2)
+LU[,confirmed:='7.5%']; ## LU2[,confirmed:='15%']
+## LU <- rbind(LU,LU2)
+ou <- merge(SF,LU,by.x='dys',by.y='t')
+
+## version with multiple runs
+ou[,trueincidence:=incidence]
+ou[,notes:=incidence*UR]
+ou[,ccadm:=propcc*trueincidence]        #to change
+ou[,beds:=hosp]
+ou[,hosp:=admns]
+## ou[confirmed=="15%",notes:=incidence*UR2]
+
+US <- ou[,.(date,confirmed,id,
+            cases=notes,
+            truecases=trueincidence,
+            hosp,ccadm,deaths,
+            dys)]
+
+## reformat
+SU <- melt(US[,.(date=(date),confirmed,id,
+                  cases,truecases,hosp,ccadm,deaths
+                  )],id.vars = c('date','confirmed','id'))
+names(SU)[4] <- 'quantity'
+
+
+SUM <- SU[,.(mid=mean(value),#quantile(value,0.5),
+             hi=quantile(value,0.975),
+             lo=quantile(value,0.025)),
+          by=.(date,quantity,confirmed)]
+
+## graphing targets
+inc <- tgts[,.(date,cases,deaths,hosp=newhosp)]
+inc <- melt(inc,id = 'date')
+inc[,c('mid','confirmed','quantity','hi','lo'):=list(value,NA,variable,NA,NA)]
+
+## incidence plot
+GP3ud <- ggplot(SUM[date<=dmy('15/07/2020') & !quantity %in% c('ccadm','truecases')],
+              aes(date,mid,col=quantity,lty=confirmed)) +
+  geom_point(data=inc) +
+  geom_line() +
+  geom_ribbon(aes(ymin=lo,ymax=hi,fill=confirmed),alpha=.2,col=NA)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  +
+  xlab('Date') + ylab('Daily incidence of quantity') +
+  scale_y_continuous(label=comma) + 
+  scale_color_manual(breaks=c('truecases','cases','hosp','ccadm','deaths'),
+                     labels=c('true incidence','confirmed cases','hospital admissions',
+                              'critical care admissions','deaths'),
+                     values=cbbPalette[1:5])+
+  scale_linetype_manual(breaks=c("7.5%","15%"),values=2:1)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  guides(col=guide_legend(ncol=2))+ guides(fill=FALSE)+
+  theme(legend.position = c(0.75, 0.15),legend.direction='vertical') +
+  geom_vline(xintercept = ymd(pnts$date[lkdnpt]),col=2,lty=2)+
+  ggtitle('Projected daily numbers for Sheffield\nReal scale with 95% CIs') +
+  facet_wrap(scales='free_y',~quantity,ncol=2)
+GP3ud
+
+GP3udL <- GP3ud + scale_y_log10(label=comma) +
+  ylab('Daily incidence of quantity (log scale)') +
+  ggtitle('Projected daily numbers for Sheffield\nReal scale with 95% CIs')
+GP3udL
+
+
+pnm <- glue('plots') + '/2incU_' + td + '.pdf'       #
+ggsave(GP3ud,filename = pnm)
+pnm <- glue('plots') + '/2LincU_' + td + '.pdf'       #
+ggsave(GP3udL,filename = pnm)
+
+ggsave(GP3ud,filename = here::here('figs/IncReal.pdf'))
+ggsave(GP3udL,filename = here::here('figs/IncLog.pdf'))
+
+
+
+
+## prevalence plots
+names(SU)
+SU[,unique(quantity)]
+PU <- copy(SU)
+PU <- PU[order(quantity,date,id)]
+## calculate cumulatives
+PU[quantity%in%c('cases','truecases','deaths'),
+   value:=nac(value),by=.(quantity,id)]
+## prevalence as simple incidence x duration
+PU[quantity=='hosp',value:=mn.hosp.stay*(value),by=.(quantity,id)]
+PU[quantity=='ccadm',value:=mn.cc.stay*(value),by=.(quantity,id)]
+
+
+## --- prevs
+US <- merge(SF,LU[,.(t,id,hosp)],by.x='dys',by.y='t')
+US[,HDU:=hosp*bedprops[variable=='Number of confirmed COVID 19 HDU patients',prop]]
+US[,ITU:=hosp*bedprops[variable=='Number of confirmed COVID 19 ITU patients',prop]]
+US[,IDU:=hosp*bedprops[variable=='Number of confirmed COVID 19 ITU patients',prop]]
+US[,other:=hosp*bedprops[variable=='Number of confirmed COVID 19 any other beds',prop]]
+
+US[,O2:=hosp*o2props[variable=='Number of confirmed COVID 19 on O2',prop]]
+US[,NIV:=hosp*
+      o2props[variable=='Number of confirmed COVID 19 on Non Invasive Ventilation',prop]]
+US[,Mechanical:=hosp*
+      o2props[variable=='Number of confirmed COVID 19 on Mechanical Ventilation',prop]]
+
+US[,confirmed:='']
+## NB 33% national vs 12%
+names(US)
+US[,c('dys','cases','Population','dta','ddys'):=NULL]
+
+## reformat
+PU <- melt(US,id.vars = c('date','confirmed','id'))
+names(PU)[4] <- 'quantity'
+
+
+PUM <- PU[,.(mid=quantile(value,0.5),
+             hi=quantile(value,0.975),
+             lo=quantile(value,0.025)),
+          by=.(date,quantity,confirmed)]
+
+## cc & hosp
+hosp <- DM[variable %in% vrs[1:4],.(mid=sum(value)),by=date]
+hosp[,quantity:='hosp']
+ccadm <- DM[variable == vrs[2],.(mid=(value)),by=date] #NOTE CC = ITU assumed
+ccadm[,quantity:='ITU']
+prev <- rbind(hosp,ccadm)
+prev[,confirmed:=NA]
+
+## prevalence plot
+GP4ud <- ggplot(PUM[date<=dmy('15/07/2020') ],
+              aes(date,mid,col=quantity,lty=confirmed)) +
+  geom_line() +
+  geom_point(data=prev) +
+  geom_ribbon(aes(ymin=lo,ymax=hi,fill=confirmed),alpha=.2,col=NA)+  
+  xlab('Date') + ylab('Prevalence of quantity') +
+  scale_y_continuous(label=comma) +
+  scale_color_manual(values=cbbPalette[1:8])+
+  scale_linetype_manual(breaks=c("7.5%","15%"),values=2:1)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  guides(col=guide_legend(ncol=2))+ guides(fill=FALSE)+
+  theme(legend.position = c(0.85, 0.15),legend.direction='vertical') +
+  ggtitle('Projected prevalent  numbers for Sheffield\nReal scale with 95% CIs') +
+  expand_limits(x=PUM[,min(date)]) +
+  facet_wrap(scales='free_y',~quantity)
+GP4ud
+
+GP4udL <- GP4ud + scale_y_log10(label=comma) +
+  ylab('Prevalence of quantity (log scale)')  +
+  ggtitle('Projected prevalent  numbers for Sheffield\nLog scale with 95% CIs') 
+GP4udL
+
+
+
+pnm <- glue('plots') + '/2PrevU_' + td + '.pdf'       #
+ggsave(GP4ud,filename = pnm)
+pnm <- glue('plots') + '/2LPrevU_' + td + '.pdf'       #
+ggsave(GP4udL,filename = pnm)
+
+
+ggsave(GP4ud,filename = here::here('figs/PrevReal.pdf'))
+ggsave(GP4udL,filename = here::here('figs/PrevLog.pdf'))
+
+
+## save most recent dates
+cat(max(pnts$date),file=here::here('data/maxdate_cases.txt'))
+cat(max(DM$date),file=here::here('data/maxdate_sitrep.txt'))
