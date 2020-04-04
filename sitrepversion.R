@@ -264,7 +264,6 @@ seiridLL(c(0,1,-0.1,-2),printbits = TRUE)                    #test
 UR <- 0.075*1
 resi <- optim(par=c(0,1,-0.1,-2),fn=seiridLL,
               control = list(fnscale=-1),hessian=TRUE) #ML
-
 (Rzero <- exp(resi$par[2]))
 (Effect <- 100*(1-exp(resi$par[3])))
 (Rnet <- exp(sum(resi$par[2:3])))
@@ -277,10 +276,21 @@ cat(HFR,file=here::here('data/HFR.txt'))
 cat(proph,file=here::here('data/HFRlit.txt'))
 
 
+## compare sheffield
+UR <- 0.075*2
+resi2 <- optim(par=c(0,1,-0.1,-2),fn=seiridLL,
+              control = list(fnscale=-1),hessian=TRUE) #ML
+(Rzero <- exp(resi$par[2]))
+(Effect <- 100*(1-exp(resi$par[3])))
+(Rnet <- exp(sum(resi$par[2:3])))
+(HFR <- 1e2*exp(sum(resi$par[4])))
+UR2 <- UR
+UR <- UR/2
+
 xx <- resi$par
 seiridLL(xx)
 
-## MLE
+## MLE for basecase as test
 outi <- dorun(resi$par)
 LA <- as.data.table(outi)
 LA[,confirmed:='7.5%']
@@ -308,11 +318,12 @@ SUM1 <- SU1[,.(mid=value,hi=value,lo=value),by=.(date,quantity,confirmed)]
 ## this is rather an under-estimate
 ## uncertainty over parameter estimates
 Sig <- solve(-resi$hessian)
-## Sig2 <- solve(-resi2$hessian)
+Sig2 <- solve(-resi2$hessian)
 PMZ <- mvrnorm(200,resi$par,Sigma=Sig)
-## PMZ2 <- mvrnorm(200,resi2$par,Sigma=Sig2)
+PMZ2 <- mvrnorm(200,resi2$par,Sigma=Sig2)
 
 ## CIs
+## basecase
 Rzero <- exp(PMZ[,2])
 (Rzero <- c(mean=mean(Rzero),quantile(Rzero,.025),quantile(Rzero,.975)))
 Rzero <- round(Rzero,digits=1)
@@ -334,21 +345,42 @@ HFR <- round(HFR,digits=1)
 HFR <- paste0((HFR[1])," (",HFR[2],' to ',HFR[3],")")
 cat(HFR,file=here::here('data/HFR.txt'))
 
+## SA
+Rzero <- exp(PMZ2[,2])
+(Rzero <- c(mean=mean(Rzero),quantile(Rzero,.025),quantile(Rzero,.975)))
+Rzero <- round(Rzero,digits=1)
+Rzero <- paste0((Rzero[1])," (",Rzero[2],' to ',Rzero[3],")")
+cat(Rzero,file=here::here('data/Rzero2.txt'))
+Effect <- 100*(1-exp(PMZ2[,3]))
+(Effect <- c(mean=mean(Effect),quantile(Effect,.025),quantile(Effect,.975)))
+Effect <- round(Effect,digits=0)
+Effect <- paste0((Effect[1])," (",Effect[2],' to ',Effect[3],")")
+cat(Effect,file=here::here('data/Effect2.txt'))
+Rnet <- exp(rowSums(PMZ2[,2:3]))
+(Rnet <- c(mean=mean(Rnet),quantile(Rnet,.025),quantile(Rnet,.975)))
+Rnet <- round(Rnet,digits=1)
+Rnet <- paste0((Rnet[1])," (",Rnet[2],' to ',Rnet[3],")")
+cat(Rnet,file=here::here('data/Rnet2.txt'))
+HFR <- exp(PMZ2[,4])
+(HFR <- 100*c(mean=mean(HFR),quantile(HFR,.025),quantile(HFR,.975)))
+HFR <- round(HFR,digits=1)
+HFR <- paste0((HFR[1])," (",HFR[2],' to ',HFR[3],")")
+cat(HFR,file=here::here('data/HFR2.txt'))
+
 
 LU2 <- LU <- list()
 for(i in 1:nrow(PMZ)){
   LU[[i]] <- as.data.table(dorun(PMZ[i,]))
   LU[[i]][,id:=i]
-  ## y[1:lkdnpt] <- 1
-  ## y[(1+lkdnpt):length(y)] <- exp(resi2$par[3])
-  ## mod <- seiri(I0=exp(PMZ2[i,1]),R0=exp(PMZ2[i,2]),Rinit = Rinit/UR,y=y,tt=tz)
-  ## LU2[[i]] <- as.data.table(mod$run(tz))
-  ## LU2[[i]][,id:=i]
+  UR <- UR*2
+  LU2[[i]] <- as.data.table(dorun(PMZ2[i,]))
+  LU2[[i]][,id:=i]
+  UR <- UR/2
 }
 
-LU <- rbindlist(LU); ## LU2 <- rbindlist(LU2)
-LU[,confirmed:='7.5%']; ## LU2[,confirmed:='15%']
-## LU <- rbind(LU,LU2)
+LU <- rbindlist(LU);  LU2 <- rbindlist(LU2)
+LU[,confirmed:='7.5%'];  LU2[,confirmed:='15%']
+LU <- rbind(LU,LU2)
 ou <- merge(SF,LU,by.x='dys',by.y='t')
 
 ## version with multiple runs
@@ -357,7 +389,7 @@ ou[,notes:=incidence*UR]
 ou[,ccadm:=propcc*trueincidence]        #to change
 ou[,beds:=hosp]
 ou[,hosp:=admns]
-## ou[confirmed=="15%",notes:=incidence*UR2]
+ou[confirmed=="15%",notes:=incidence*UR2]
 
 US <- ou[,.(date,confirmed,id,
             cases=notes,
@@ -419,23 +451,10 @@ ggsave(GP3ud,filename = here::here('figs/IncReal.pdf'))
 ggsave(GP3udL,filename = here::here('figs/IncLog.pdf'))
 
 
-
-
-## prevalence plots
-names(SU)
-SU[,unique(quantity)]
-PU <- copy(SU)
-PU <- PU[order(quantity,date,id)]
-## calculate cumulatives
-PU[quantity%in%c('cases','truecases','deaths'),
-   value:=nac(value),by=.(quantity,id)]
-## prevalence as simple incidence x duration
-PU[quantity=='hosp',value:=mn.hosp.stay*(value),by=.(quantity,id)]
-PU[quantity=='ccadm',value:=mn.cc.stay*(value),by=.(quantity,id)]
-
-
 ## --- prevs
-US <- merge(SF,LU[,.(t,id,hosp)],by.x='dys',by.y='t')
+US <- merge(SF,LU[,.(t,id,hosp,confirmed)],by.x='dys',by.y='t')
+US2 <- merge(SF,LU2[,.(t,id,hosp,confirmed)],by.x='dys',by.y='t')
+US <- rbind(US,US2)
 US[,HDU:=hosp*bedprops[variable=='Number of confirmed COVID 19 HDU patients',prop]]
 US[,ITU:=hosp*bedprops[variable=='Number of confirmed COVID 19 ITU patients',prop]]
 US[,IDU:=hosp*bedprops[variable=='Number of confirmed COVID 19 ITU patients',prop]]
@@ -447,8 +466,8 @@ US[,NIV:=hosp*
 US[,Mechanical:=hosp*
       o2props[variable=='Number of confirmed COVID 19 on Mechanical Ventilation',prop]]
 
-US[,confirmed:='']
-## NB 33% national vs 12%
+## US[,confirmed:=NA]
+## nb 33% national vs 12%
 names(US)
 US[,c('dys','cases','Population','dta','ddys'):=NULL]
 
@@ -457,7 +476,7 @@ PU <- melt(US,id.vars = c('date','confirmed','id'))
 names(PU)[4] <- 'quantity'
 
 
-PUM <- PU[,.(mid=quantile(value,0.5),
+PUM <- PU[,.(mid=mean(value),#quantile(value,0.5),
              hi=quantile(value,0.975),
              lo=quantile(value,0.025)),
           by=.(date,quantity,confirmed)]
