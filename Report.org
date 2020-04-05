@@ -1,0 +1,229 @@
+#+TITLE: Sheffield COVID-19 forecasts
+#+AUTHOR: P.J. Dodd
+#+EMAIL: p.j.dodd@sheffield.ac.uk
+#+OPTIONS: tex:t
+#+LATEX_HEADER: \usepackage{fourier}
+
+* Preamble
+
+This document contains outputs forecasting epidemiological and resource trends based on fitting a transmission model to local case, death and hospital admission data. Numbers and graphs are updated as new data becomes available. The data from local sitreps (ie everything except case data) are not public domain and so this report should be considered sensitive and not onwardly shared.
+
+Please do consider multiple analyses around these questions. Please also consider the estimates of resource implications more caveated because: a) I am less familiar with modelling these; b) the ingredients are likely to be dynamic due to changes in practice and epidemic dynamics.
+
+The most recent case data used in this report is from:
+#+INCLUDE: "./data/maxdate_cases.txt"
+
+The most recent sitrep data used in this report is from:
+#+INCLUDE: "./data/maxdate_sitrep.txt"
+
+* Summary
+
+Daily cases, hospitalisations and deaths are continuing to increase in Sheffield. While the lockdown intervention does appear to have reduced transmission, the net reproduction number appears still to be over 1, corresponding to self-sustaining transmission. Peaks are forecast to occur in early June. However, post-intervention data are still sparse, implying that these conclusions are still sensitive to data updates. The main methodological changes from previous work are: 1) inclusion of incidence of deaths and hospitalisations from sitrep data as fitting targets (along with case incidence); 2) additional analyses and outputs around resource utilisation based on sitrep data.
+
+* Results
+
+
+** Overall trends
+
+Overall trends in confirmed cases continue to increase in both Sheffield and the UK (see Figure [[fig-trends]]). A decrease in the rate of growth was visible locally after the lockdown (red dashed line).
+
+ #+CAPTION: Cumulative confirmed cases nationally and locally. Red dashed line is where a change in gradient is visible shortly after lockdown
+ #+attr_html: :width 100%
+ #+name: fig-trends
+ #+attr_latex: :width \textwidth :placement [H]
+ [[./figs/Trends.pdf]]
+
+
+** Parameter estimates
+
+Our estimate for $R_0$ with 7.5% of cases assumed confirmed is:
+#+INCLUDE: "./data/Rzero.txt"
+Our estimate for $R_0$ with 15% of cases assumed confirmed is:
+#+INCLUDE: "./data/Rzero2.txt"
+
+This compares with an $R_0$ estimate for the UK in the Imperial 13 report of a little below 4.
+
+Our estimate for the reduction in transmission from lockdown with 7.5% of cases assumed confirmed is:
+#+INCLUDE: "./data/Effect.txt"
+percent; with 15% of cases confirmed it is: 
+#+INCLUDE: "./data/Effect2.txt"
+percent.
+
+This is within the uncertain central estimate of lockdown efficacy for 11 European countries in the Imperial report 13.
+
+This implies an estimate for the current net reproduction number with 7.5% of cases assumed confirmed is:
+#+INCLUDE: "./data/Rnet.txt"
+; with 15% of cases confirmed it is: 
+#+INCLUDE: "./data/Rnet2.txt"
+
+In addition we estimate the fraction of cases to needing hospitalisation to be:
+#+INCLUDE: "./data/HFR.txt"
+percecnt; with 15% of cases confirmed it is: 
+#+INCLUDE: "./data/HFR2.txt"
+percent.
+
+This compares with an estimate using age-specific rates from literature, weigted by Sheffield demography:
+#+INCLUDE: "./data/HFRlit.txt"
+percent.
+
+** Projected daily cases, hospitalisations, deaths
+
+Corresponding to a net reproduction number above 1, the local epidemic is forecast to be growing. Figure [[fig-inclog]] shows the data used in fitting, which is clearer on a log scale. Figure [[fig-increal]] shows these projections on a real scale. Analyses were performed under a basecase assumption that 7.5% of cases are confirmed and as a sensitivity analysis $2\times$ this.
+
+ #+CAPTION: Fit to confirmed cases, hospitalisations and deaths in Sheffield (log scale)
+ #+attr_html: :width 100%
+ #+name: fig-inclog
+ #+attr_latex: :width \textwidth :placement [H]
+ [[./figs/IncLog.pdf]]
+
+ #+CAPTION: Projected confirmed cases, hospitalisations and deaths in Sheffield (real scale)
+ #+attr_html: :width 100%
+ #+name: fig-increal
+ #+attr_latex: :width \textwidth :placement [H]
+ [[./figs/IncReal.pdf]]
+
+** Projected resource utilisation
+
+We used estimates of hospital stay length and fractions of COVID patients in different bed types and requiring different breathing assistance to project resource requirements. See Figure [[fig-prevlog]], on a log scale. The datapoints plotted (inpatient prevalence and ITU prevalence) are from the sitrep data are not fitted to directly, but informed by proportions and stay lengths analyses of sitrep data. Figure [[fig-prevreal]] shows resource requirements on a real scale.
+
+ #+CAPTION: Projected resource use of Sheffield (log scale)
+ #+attr_html: :width 100%
+ #+name: fig-prevlog
+ #+attr_latex: :width \textwidth :placement [H]
+ [[./figs/PrevLog.pdf]]
+
+ #+CAPTION: Projected resource use of Sheffield (real scale)
+ #+attr_html: :width 100%
+ #+name: fig-prevreal
+ #+attr_latex: :width \textwidth :placement [H]
+ [[./figs/PrevReal.pdf]]
+
+* Methods
+
+** Code and output availability
+
+The code for the analyses and this report are updated and available at [[https://github.com/petedodd/CV19SHF]].
+
+The updated report itself and also the CSV files of estimates are available at [[https://drive.google.com/drive/folders/1QWzRUdWBDDLnVH8UX5SFe1Gp9_Dd69iS?usp=sharing]].
+
+Data sources and analyses for the model are described in the following subsections. The model specification and fitting is described in Section \ref{sec-appendix}.
+
+** COVID testing data
+
+The concern with testing is that as only a minority of infections are confirmed, this could bias estimates. We use a basecase assumption that 7.5% of infections in the UK have been confirmed, based on this analysis: [[https://cmmid.github.io/topics/covid19/severity/global_cfr_estimates.html]]. We also consider a sensitivity analysis of $2\times$ this value as Sheffield is understood to have tested more extensively.
+
+While most results are robust against constant under-ascertainment, trends in testing (eg the planned ramping up) will introduce bias. At the moment this is not accounted for as there is not strong evidence of a trend (see Figure [[fig-tests]]). This issue motivates including hospitalisations and particularly deaths as calibration targets. If evidence of testing trends becomes visible, we will attempt to adjust for this in using case data.
+
+ #+CAPTION: COVID testing volumes and proportion positive.
+ #+attr_html: :width 100%
+ #+name: fig-tests
+ #+attr_latex: :width \textwidth :placement [H]
+ [[./figs/LabTests.pdf]]
+
+** Delay estimates
+\label{delays}
+*** Case to hospitalisation or death
+
+To generate estimates of delays from cases to hospitalisation and death, we used linear regression of the log cumulative cases, hospital admissions and deaths with shared slope but different intercepts. These results generated delays of  
+#+INCLUDE: "./data/dC2H.txt" 
+days from case-to-hospital admission and  
+#+INCLUDE: "./data/dC2D.txt"
+days from case-to-death. See Figure [[fig-delays]] for approximate alignments. These compare to estimates used in Imperial report 9 of 10 days and 20 days respectively.
+
+NB we have take hospital admission (in the sitrep data) to include admission of COVID positive patients and positive COVID testing of existing inpatients.
+
+
+ #+CAPTION: Log of cumulative cases, hospitalisations and deaths; with alignments by delay.
+ #+attr_html: :width 100%
+ #+name: fig-delays
+ #+attr_latex: :width \textwidth :placement [H]
+ [[./figs/Delays.pdf]]
+
+
+
+*** Hospital stays
+
+To determine mean hospital stays related to COVID locally, we calculated the mean rates of discharge and death among COVID inpatients from the sitrep data. There are trends in discharge rates, see Figure [[fig-outrates]]; the most recent 7 days were used. The mean hospital stay was determined as the inverse of the total outrates as
+ #+INCLUDE: "./data/meanstay.txt"
+days. This compares with 10 days for critical care patients and 7 days for other patients assumed in Imperial report 9.
+
+
+ #+CAPTION: Raw rates of discharge and death among COVID inpatients (red dashed line = last 7 days)
+ #+attr_html: :width 100%
+ #+name: fig-outrates
+ #+attr_latex: :width \textwidth :placement [H]
+ [[./figs/OutRates.pdf]]
+
+
+** Bed type and breathing assistance
+
+To parametrize the number of beds of each type used and the use of various types of breathing assistance, we used the simple approach of multiplying the number hospitalised cases by the proportion of inpatients with COVID observed in different bed types (Figure [[fig-beds]]) or requiring different types of breathing assistance (Figure [[fig-O2]]). We used averages from the most recent 7 days of sitrep data. However, trends are visible in bed type used and practice may change if resource limits are approached.
+
+ #+CAPTION: The proportion of COVID inpatients in different bed types (red dashed line = last 7 days)
+ #+attr_html: :width 100%
+ #+name: fig-beds
+ #+attr_latex: :width \textwidth :placement [H]
+ [[./figs/BedProps.pdf]]
+
+ #+CAPTION: The proportion of COVID inpatients requiring different breathing assistance (red dashed line = last 7 days)
+ #+attr_html: :width 100%
+ #+name: fig-O2
+ #+attr_latex: :width \textwidth :placement [H]
+ [[./figs/Oprops.pdf]]
+ 
+** Parameters from literature
+
+Most parameters are contained in the following table, although not all these are used in the current version. The verity IFRs are used, but the parameters relating to hospitalisation are not used.
+
+|  ages |        demo | sympto | symptohosp | hospcc |  IFR |   proph |     propcc |     propd |
+|-------+-------------+--------+------------+--------+------+---------+------------+-----------|
+|   0-9 | 0.107886922 |     66 |        0.1 |      5 |    0 | 0.00066 |  0 |         0 |
+| 10-19 | 0.115624544 |     66 |        0.3 |      5 | 0.01 | 0.00198 |  0 | 0 |
+| 20-29 | 0.188336768 |     66 |        1.2 |      5 |    0 | 0.00792 |   0.000396 |         0 |
+| 30-39 | 0.139600136 |     66 |        3.2 |      5 | 0.08 | 0.02112 |   0.001056 | 0 |
+| 40-49 |  0.11854238 |     66 |        4.9 |    6.3 | 0.15 | 0.03234 | 0.00203742 |    0.0015 |
+| 50-59 | 0.122764966 |     66 |       10.2 |   12.2 |  0.6 | 0.06732 | 0.00821304 |     0.006 |
+| 60-69 | 0.090433456 |     66 |       16.6 |   27.4 |  2.2 | 0.10956 | 0.03001944 |     0.022 |
+| 70-79 | 0.072074455 |     66 |       24.3 |   43.2 |  5.1 | 0.16038 | 0.06928416 |     0.051 |
+|   80+ | 0.044736372 |     66 |       27.3 |   70.9 |  9.3 | 0.18018 | 0.12774762 |     0.093 |
+|-------+-------------+--------+------------+--------+------+---------+------------+-----------|
+
+   
+
+
+* Appendix: modelling details
+\label{sec-appendix}
+
+
+The model is an SEIR (susceptible-latent-infected-recovered) model using latent period ($1/\nu$) 5.1 days and infectious period ($1/\nu_2$) 4.6 days:
+$$\frac{\mathrm{d}S}{\mathrm{d}t} = -\beta(t)\frac{SI}{N} $$
+$$\frac{\mathrm{d}E}{\mathrm{d}t} =+\beta(t)\frac{SI}{N} -\nu E$$
+$$\frac{\mathrm{d}I}{\mathrm{d}t} =\nu E - \nu_2 I$$
+$$\frac{\mathrm{d}R}{\mathrm{d}t} = \nu_2 I$$
+
+The model is not age-structured. For IFR, a mean of the age-specific IFRs was taken using the proportion of the Sheffield population in each age-group.
+
+The transmission term $\beta(t)$ was taken to be a piecewise constant function whose value changes at the time-point corresponding to gradient change in case data (shown with vertical dashed red lines in projection graphs).
+
+Incidence of confirmed cases in this model was taken as proportional to $\nu E$.
+
+Auxilliary states $sick$ and $dying$ were used to calculate the incidence of hospitalisation and death:
+
+$$\frac{\mathrm{d}sick}{\mathrm{d}t} = \nu E\times HR - sick/d_h$$
+$$\frac{\mathrm{d}dying}{\mathrm{d}t} = \nu E\times IFR - dying/d_d$$
+
+Here $IFR$ is the infection fatality rate and $HR$ is the fraction of cases hospitalised. (The delays $d_h$ and $d_d$ are determined from a separate analysis - see Section \ref{delays}). The incidence of death is then $dying/d_d$ and the incidence of hospitalisation is $sick/d_h$.
+
+Finally, prevalence of hospitalisation was determined by an additional equation:
+$$\frac{\mathrm{d}hosp}{\mathrm{d}t} = sick/d_h - hosp/d_{h2o}$$
+where the mean stay $d_{h2o}$ is determined in Section \ref{delays}. The incidence of hospitalisation is $sick/d_h$.
+
+
+A likelihood is specified by assuming Poisson counts for daily case, admission and death counts, with parameters given by the rates from the ODEs. Parameters corresponding to $R_0$, the reduction in $\beta$ due to lockdown, the initial number infected, and the proportion of cases hospitalised ($HR$ above) were fitted. Uncertainty intervals were constructed from 200 simulations of parameters drawn from a multivariate normal to the likelihood.
+
+
+
+
+
+
+

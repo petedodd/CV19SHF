@@ -79,7 +79,7 @@ sfr <- list(sfr=n1/(n1+n2),n1=n1,n2=n2)
 hosparms <- c(stay,sfr)
 
 save(hosparms,file=here::here('data/parm.hosparms.Rdata'))
-cat(stay$mid,file=here::here('data/meanstay.txt'))
+cat(round(stay$mid,d=1),file=here::here('data/meanstay.txt'))
 
 ## bed proportions
 B <- DM[variable %in% vrs[1:4]]
@@ -158,5 +158,5 @@ ggexport(gcb,filename=here::here('figs/Delays.pdf'),width=7,height=5)
 
 delays <- list(dC2D=dC2D,dC2H=dC2H)
 save(delays,file=here::here('data/parm.delays.Rdata'))
-cat(delays$dC2D,file=here::here('data/dC2D.txt'))
-cat(delays$dC2H,file=here::here('data/dC2H.txt'))
+cat(round(delays$dC2D,d=1),file=here::here('data/dC2D.txt'))
+cat(round(delays$dC2H,d=1),file=here::here('data/dC2H.txt'))

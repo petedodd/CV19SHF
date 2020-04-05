@@ -301,10 +301,10 @@ resi <- optim(par=c(0,1,-0.1,-2),fn=seiridLL,
 (HFR <- 1e2*exp(sum(resi$par[4])))
 
 cat(Rzero,file=here::here('data/Rzero.txt'))
-cat(Effect,file=here::here('data/Effect.txt'))
+cat(Effect,d=1,file=here::here('data/Effect.txt'))
 cat(Rnet,file=here::here('data/Rnet.txt'))
 cat(HFR,file=here::here('data/HFR.txt'))
-cat(proph,file=here::here('data/HFRlit.txt'))
+cat(round(1e2*proph),file=here::here('data/HFRlit.txt'))
 
 
 ## compare sheffield
@@ -556,11 +556,12 @@ ggsave(GP4udL,filename = here::here('figs/PrevLog.pdf'))
 
 
 ## save most recent dates
-cat(max(pnts$date),file=here::here('data/maxdate_cases.txt'))
-cat(max(DM$date),file=here::here('data/maxdate_sitrep.txt'))
+cat(as.character(max(pnts$date)),file=here::here('data/maxdate_cases.txt'))
+cat(as.character(max(DM$date)),file=here::here('data/maxdate_sitrep.txt'))
 
 
 ## save output also
 fwrite(PUM[date<=dmy('15/07/2020') ],file=here::here('data/PrevData.csv'))
 fwrite(SUM[date<=dmy('15/07/2020') & !quantity %in% c('ccadm','truecases')],
        file=here::here('data/IncData.csv'))
+fwrite(parms,file=here::here('data/parms.csv'))
