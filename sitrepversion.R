@@ -293,7 +293,7 @@ seiridLL(c(0,1,-0.1,-2),printbits = TRUE)                    #test
 
 ## compare sheffield
 UR <- 0.075*1
-resi <- optim(par=c(0,1,-0.1,-2),fn=seiridLL,
+resi <- optim(par=c(0,1,-0.1,-2)+runif(4)/100,fn=seiridLL,
               control = list(fnscale=-1),hessian=TRUE) #ML
 (Rzero <- exp(resi$par[2]))
 (Effect <- 100*(1-exp(resi$par[3])))
@@ -309,7 +309,7 @@ cat(round(1e2*proph),file=here::here('data/HFRlit.txt'))
 
 ## compare sheffield
 UR <- 0.075*2
-resi2 <- optim(par=c(0,1,-0.1,-2),fn=seiridLL,
+resi2 <- optim(par=c(0,1,-0.1,-2)+runif(4)/100,fn=seiridLL,
               control = list(fnscale=-1),hessian=TRUE) #ML
 (Rzero <- exp(resi$par[2]))
 (Effect <- 100*(1-exp(resi$par[3])))
@@ -567,3 +567,7 @@ fwrite(SUM[date<=dmy('15/07/2020') & !quantity %in% c('ccadm','truecases')],
 nmz <- c('ages','demo','sympto','symptohosp','hospcc','IFR')
 fwrite(format(parms[,..nmz],digits=1,scientific=FALSE),
        file=here::here('data/parms.csv'))
+
+
+## TODO
+## add other resource use from DM.Rdata to graph
