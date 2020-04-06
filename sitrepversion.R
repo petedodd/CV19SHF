@@ -564,4 +564,6 @@ cat(as.character(max(DM$date)),file=here::here('data/maxdate_sitrep.txt'))
 fwrite(PUM[date<=dmy('15/07/2020') ],file=here::here('data/PrevData.csv'))
 fwrite(SUM[date<=dmy('15/07/2020') & !quantity %in% c('ccadm','truecases')],
        file=here::here('data/IncData.csv'))
-fwrite(parms,file=here::here('data/parms.csv'))
+nmz <- c('ages','demo','sympto','symptohosp','hospcc','IFR')
+fwrite(format(parms[,..nmz],digits=1,scientific=FALSE),
+       file=here::here('data/parms.csv'))
