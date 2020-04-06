@@ -488,7 +488,7 @@ US2 <- merge(SF,LU2[,.(t,id,hosp,confirmed)],by.x='dys',by.y='t')
 US <- rbind(US,US2)
 US[,HDU:=hosp*bedprops[variable=='Number of confirmed COVID 19 HDU patients',prop]]
 US[,ITU:=hosp*bedprops[variable=='Number of confirmed COVID 19 ITU patients',prop]]
-US[,IDU:=hosp*bedprops[variable=='Number of confirmed COVID 19 ITU patients',prop]]
+US[,IDU:=hosp*bedprops[variable==vrs[3],prop]]
 US[,other:=hosp*bedprops[variable=='Number of confirmed COVID 19 any other beds',prop]]
 
 US[,O2:=hosp*o2props[variable=='Number of confirmed COVID 19 on O2',prop]]
@@ -512,13 +512,28 @@ PUM <- PU[,.(mid=mean(value),#quantile(value,0.5),
              lo=quantile(value,0.025)),
           by=.(date,quantity,confirmed)]
 
-## cc & hosp
+## cc & hosp etc
+IDUP <- DM[variable==vrs[3],.(mid=value),by=date] #IDU
+IDUP[,quantity:='IDU']
+HDUP <- DM[variable==vrs[1],.(mid=value),by=date] #HDU
+HDUP[,quantity:='HDU']
+MP <- DM[variable==vrs[7],.(mid=value),by=date] #MV
+MP[,quantity:='Mechanical']
+NP <- DM[variable==vrs[6],.(mid=value),by=date] #NIV
+NP[,quantity:='NIV']
+OP <- DM[variable==vrs[5],.(mid=value),by=date] #O2
+OP[,quantity:='O2']
+RP <- DM[variable==vrs[4],.(mid=value),by=date] #other beds
+RP[,quantity:='other']
 hosp <- DM[variable %in% vrs[1:4],.(mid=sum(value)),by=date]
 hosp[,quantity:='hosp']
 ccadm <- DM[variable == vrs[2],.(mid=(value)),by=date] #NOTE CC = ITU assumed
 ccadm[,quantity:='ITU']
-prev <- rbind(hosp,ccadm)
+prev <- rbindlist(list(IDUP,HDUP,MP,NP,OP,RP,hosp,ccadm))
 prev[,confirmed:=NA]
+
+
+
 
 ## prevalence plot
 GP4ud <- ggplot(PUM[date<=dmy('15/07/2020') ],
@@ -531,8 +546,9 @@ GP4ud <- ggplot(PUM[date<=dmy('15/07/2020') ],
   scale_color_manual(values=cbbPalette[1:8])+
   scale_linetype_manual(breaks=c("7.5%","15%"),values=2:1)+
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  guides(col=guide_legend(ncol=2))+ guides(fill=FALSE)+
-  theme(legend.position = c(0.85, 0.15),legend.direction='vertical') +
+  guides(col=guide_legend(ncol=4))+ guides(fill=FALSE)+
+  guides(linetype=guide_legend(ncol=2)) + 
+  theme(legend.position = c(0.85, 0.1),legend.direction='vertical') +
   ggtitle('Projected prevalent  numbers for Sheffield\nReal scale with 95% CIs') +
   expand_limits(x=PUM[,min(date)]) +
   facet_wrap(scales='free_y',~quantity)
@@ -561,6 +577,10 @@ cat(as.character(max(DM$date)),file=here::here('data/maxdate_sitrep.txt'))
 
 
 ## save output also
+fn <- glue(here::here('data'))+ '/PUM_' + td + '.Rdata'
+save(PUM,file=fn)
+fn <- glue(here::here('data'))+ '/SUM_' + td + '.Rdata'
+save(SUM,file=fn)
 fwrite(PUM[date<=dmy('15/07/2020') ],file=here::here('data/PrevData.csv'))
 fwrite(SUM[date<=dmy('15/07/2020') & !quantity %in% c('ccadm','truecases')],
        file=here::here('data/IncData.csv'))
@@ -568,6 +588,3 @@ nmz <- c('ages','demo','sympto','symptohosp','hospcc','IFR')
 fwrite(format(parms[,..nmz],digits=1,scientific=FALSE),
        file=here::here('data/parms.csv'))
 
-
-## TODO
-## add other resource use from DM.Rdata to graph
