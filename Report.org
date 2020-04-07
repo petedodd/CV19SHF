@@ -45,14 +45,14 @@ Overall trends in confirmed cases continue to increase in both Sheffield and the
 
 Our estimate for $R_0$ with 7.5% of cases assumed confirmed is:
 #+INCLUDE: "./data/Rzero.txt"
-Our estimate for $R_0$ with 15% of cases assumed confirmed is:
+Our estimate for $R_0$ with 3.8% of cases assumed confirmed is:
 #+INCLUDE: "./data/Rzero2.txt"
 
 This compares with an $R_0$ estimate for the UK in the Imperial 13 report of a little below 4.
 
 Our estimate for the reduction in transmission from lockdown with 7.5% of cases assumed confirmed is:
 #+INCLUDE: "./data/Effect.txt"
-percent; with 15% of cases confirmed it is: 
+percent; with 3.8% of cases confirmed it is: 
 #+INCLUDE: "./data/Effect2.txt"
 percent.
 
@@ -60,12 +60,12 @@ This is within the uncertain estimate of lockdown efficacy for 11 European count
 
 This implies an estimate for the current net reproduction number with 7.5% of cases assumed confirmed is:
 #+INCLUDE: "./data/Rnet.txt"
-; with 15% of cases confirmed it is: 
+; with 3.8% of cases confirmed it is: 
 #+INCLUDE: "./data/Rnet2.txt"
 
 In addition we estimate the fraction of cases to needing hospitalisation to be:
 #+INCLUDE: "./data/HFR.txt"
-percecnt; with 15% of cases confirmed it is: 
+percecnt; with 3.8% of cases confirmed it is: 
 #+INCLUDE: "./data/HFR2.txt"
 percent.
 
