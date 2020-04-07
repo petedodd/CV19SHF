@@ -20,6 +20,13 @@ The most recent sitrep data used in this report is from:
 
 Daily cases, hospitalisations and deaths are continuing to increase in Sheffield. While the lockdown intervention does appear to have reduced transmission, the net reproduction number appears still to be over 1, corresponding to self-sustaining transmission. Peaks are forecast to occur in June/July. However, post-intervention data are still sparse, implying that these conclusions are still sensitive to data updates. The main methodological changes from previous work are: 1) inclusion of incidence of deaths and hospitalisations from sitrep data as fitting targets (along with case incidence); 2) additional analyses and outputs around resource utilisation based on sitrep data.
 
+** Recent changes
+
+<2020-04-07 Tue>
+
+- _Infectious period changed_ from 4.6 to 2.9 days, following Kucharski et al [[https://doi.org/10.1016/S1473-3099(20)30144-4]]. This leads to somewhat lower initial $R_0$ estimates (nearer 3 than 4), and lower peaks.
+- _Change in sensitivity analysis on proportion of cases confirmed_ from $2\times$ basecase (15%) to half of basecase (3.75%), since the 15% assumption consistently fits badly to mortality data, and feels unrealistic. The 3.75% analysis has earlier peaks than base case by 2-3 weeks.
+
 * Results
 
 
@@ -68,7 +75,7 @@ percent.
 
 ** Projected daily cases, hospitalisations, deaths
 
-Corresponding to a net reproduction number above 1, the local epidemic is forecast to be growing. Figure [[fig-inclog]] shows the data used in fitting, which is clearer on a log scale. Figure [[fig-increal]] shows these projections on a real scale. Analyses were performed under a basecase assumption that 7.5% of cases are confirmed and as a sensitivity analysis $2\times$ this.
+Corresponding to a net reproduction number above 1, the local epidemic is forecast to be growing. Figure [[fig-inclog]] shows the data used in fitting, which is clearer on a log scale. Figure [[fig-increal]] shows these projections on a real scale. Analyses were performed under a basecase assumption that 7.5% of cases are confirmed and as a sensitivity analysis, half this value (ie 3.75%).
 
  #+CAPTION: Fit to confirmed cases, hospitalisations and deaths in Sheffield (log scale)
  #+attr_html: :width 100%
@@ -110,7 +117,7 @@ Data sources and analyses for the model are described in the following subsectio
 
 ** COVID testing data
 
-The concern with testing is that as only a minority of infections are confirmed, this could bias estimates. We use a basecase assumption that 7.5% of infections in the UK have been confirmed, based on this analysis: [[https://cmmid.github.io/topics/covid19/severity/global_cfr_estimates.html]]. We also consider a sensitivity analysis of $2\times$ this value as Sheffield is understood to have tested more extensively.
+The concern with testing is that as only a minority of infections are confirmed, this could bias estimates. We use a basecase assumption that 7.5% of infections in the UK have been confirmed, based on this analysis: [[https://cmmid.github.io/topics/covid19/severity/global_cfr_estimates.html]]. We also consider a sensitivity analysis of half this value as Sheffield is understood to have tested more extensively.
 
 While most results are robust against constant under-ascertainment, trends in testing (eg the planned ramping up) will introduce bias. At the moment this is not accounted for as there is not strong evidence of a trend (see Figure [[fig-tests]]). This issue motivates including hospitalisations and particularly deaths as calibration targets. If evidence of testing trends becomes visible, we will attempt to adjust for this in using case data.
 
@@ -194,7 +201,8 @@ Most parameters are contained in the following table, although not all these are
 \label{sec-appendix}
 
 
-The model is an SEIR (susceptible-latent-infected-recovered) model using latent period ($1/\nu$) 5.1 days and infectious period ($1/\nu_2$) 4.6 days:
+The model is an SEIR (susceptible-latent-infected-recovered) model using latent period ($1/\nu$) 5.2 days and infectious period ($1/\nu_2$) 2.9 days, following Kucharski et al  [[https://doi.org/10.1016/S1473-3099(20)30144-4]] (see supplement table S1):
+
 $$\frac{\mathrm{d}S}{\mathrm{d}t} = -\beta(t)\frac{SI}{N} $$
 $$\frac{\mathrm{d}E}{\mathrm{d}t} =+\beta(t)\frac{SI}{N} -\nu E$$
 $$\frac{\mathrm{d}I}{\mathrm{d}t} =\nu E - \nu_2 I$$
@@ -208,13 +216,13 @@ Incidence of confirmed cases in this model was taken as proportional to $\nu E$.
 
 Auxilliary states $sick$ and $dying$ were used to calculate the incidence of hospitalisation and death:
 
-$$\frac{\mathrm{d}sick}{\mathrm{d}t} = \nu E\times HR - sick/d_h$$
-$$\frac{\mathrm{d}dying}{\mathrm{d}t} = \nu E\times IFR - dying/d_d$$
+$$\frac{\mathrm{d}(sick)}{\mathrm{d}t} = \nu E\times HR - sick/d_h$$
+$$\frac{\mathrm{d}(dying)}{\mathrm{d}t} = \nu E\times IFR - dying/d_d$$
 
 Here $IFR$ is the infection fatality rate and $HR$ is the fraction of cases hospitalised. (The delays $d_h$ and $d_d$ are determined from a separate analysis - see Section \ref{delays}). The incidence of death is then $dying/d_d$ and the incidence of hospitalisation is $sick/d_h$.
 
 Finally, prevalence of hospitalisation was determined by an additional equation:
-$$\frac{\mathrm{d}hosp}{\mathrm{d}t} = sick/d_h - hosp/d_{h2o}$$
+$$\frac{\mathrm{d}(hosp)}{\mathrm{d}t} = sick/d_h - hosp/d_{h2o}$$
 where the mean stay $d_{h2o}$ is determined in Section \ref{delays}. The incidence of hospitalisation is $sick/d_h$.
 
 

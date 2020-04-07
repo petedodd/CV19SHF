@@ -221,7 +221,7 @@ seirid <- odin::odin({
   nu2 <- 1/pinf
   beta <- R0*nu2*z
   lat <- user(5.1)                       #latent time
-  pinf <- user(4.6)                      #infectious period
+  pinf <- user(2.9)                      #infectious period
   I0 <- user(361)                        #initial state
   Rinit <- user(5)                      #initial recovered
   R0 <- user(2.6)
@@ -308,7 +308,7 @@ cat(round(1e2*proph),file=here::here('data/HFRlit.txt'))
 
 
 ## compare sheffield
-UR <- 0.075*2
+UR <- 0.075/2
 resi2 <- optim(par=c(0,1,-0.1,-2)+runif(4)/100,fn=seiridLL,
               control = list(fnscale=-1),hessian=TRUE) #ML
 (Rzero <- exp(resi$par[2]))
@@ -316,7 +316,7 @@ resi2 <- optim(par=c(0,1,-0.1,-2)+runif(4)/100,fn=seiridLL,
 (Rnet <- exp(sum(resi$par[2:3])))
 (HFR <- 1e2*exp(sum(resi$par[4])))
 UR2 <- UR
-UR <- UR/2
+UR <- UR*2
 
 xx <- resi$par
 seiridLL(xx)
@@ -403,14 +403,14 @@ LU2 <- LU <- list()
 for(i in 1:nrow(PMZ)){
   LU[[i]] <- as.data.table(dorun(PMZ[i,]))
   LU[[i]][,id:=i]
-  UR <- UR*2
+  UR <- UR/2
   LU2[[i]] <- as.data.table(dorun(PMZ2[i,]))
   LU2[[i]][,id:=i]
-  UR <- UR/2
+  UR <- UR*2
 }
 
 LU <- rbindlist(LU);  LU2 <- rbindlist(LU2)
-LU[,confirmed:='7.5%'];  LU2[,confirmed:='15%']
+LU[,confirmed:='7.5%'];  LU2[,confirmed:='3.8%']
 LU <- rbind(LU,LU2)
 ou <- merge(SF,LU,by.x='dys',by.y='t')
 
@@ -420,7 +420,7 @@ ou[,notes:=incidence*UR]
 ou[,ccadm:=propcc*trueincidence]        #to change
 ou[,beds:=hosp]
 ou[,hosp:=admns]
-ou[confirmed=="15%",notes:=incidence*UR2]
+ou[confirmed=="3.8%",notes:=incidence*UR2]
 
 US <- ou[,.(date,confirmed,id,
             cases=notes,
@@ -458,7 +458,7 @@ GP3ud <- ggplot(SUM[date<=dmy('15/07/2020') & !quantity %in% c('ccadm','truecase
                      labels=c('true incidence','confirmed cases','hospital admissions',
                               'critical care admissions','deaths'),
                      values=cbbPalette[1:5])+
-  scale_linetype_manual(breaks=c("7.5%","15%"),values=2:1)+
+  scale_linetype_manual(breaks=c("7.5%","3.8%"),values=2:1)+
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   guides(col=guide_legend(ncol=2))+ guides(fill=FALSE)+
   theme(legend.position = c(0.75, 0.15),legend.direction='vertical') +
@@ -544,7 +544,7 @@ GP4ud <- ggplot(PUM[date<=dmy('15/07/2020') ],
   xlab('Date') + ylab('Prevalence of quantity') +
   scale_y_continuous(label=comma) +
   scale_color_manual(values=cbbPalette[1:8])+
-  scale_linetype_manual(breaks=c("7.5%","15%"),values=2:1)+
+  scale_linetype_manual(breaks=c("7.5%","3.8%"),values=2:1)+
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   guides(col=guide_legend(ncol=4))+ guides(fill=FALSE)+
   guides(linetype=guide_legend(ncol=2)) + 
