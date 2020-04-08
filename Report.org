@@ -18,7 +18,7 @@ The most recent sitrep data used in this report is from:
 
 * Summary
 
-Daily cases, hospitalisations and deaths are continuing to increase in Sheffield. While the lockdown intervention does appear to have reduced transmission, the net reproduction number appears still to be over 1, corresponding to self-sustaining transmission. Peaks are forecast to occur in June/July. However, post-intervention data are still sparse, implying that these conclusions are still sensitive to data updates. The main methodological changes from previous work are: 1) inclusion of incidence of deaths and hospitalisations from sitrep data as fitting targets (along with case incidence); 2) additional analyses and outputs around resource utilisation based on sitrep data.
+For the first time the net reproduction number is estimated to be around 1 and the peak in admissions and deaths forecast during the next week, and the peak in resource use being forecast around the start of May. Some of this may be due to the anomalously low new case count for today.
 
 ** Recent changes
 
@@ -27,18 +27,30 @@ Daily cases, hospitalisations and deaths are continuing to increase in Sheffield
 - _Infectious period changed_ from 4.6 to 2.9 days, following Kucharski et al [[https://doi.org/10.1016/S1473-3099(20)30144-4]]. This leads to somewhat lower initial $R_0$ estimates (nearer 3 than 4), and lower peaks.
 - _Change in sensitivity analysis on proportion of cases confirmed_ from $2\times$ basecase (15%) to half of basecase (3.75%), since the 15% assumption consistently fits badly to mortality data, and feels unrealistic. The 3.75% analysis has earlier peaks than base case by 2-3 weeks.
 
+<2020-04-08 Wed>
+
+- In output PrevData.csv, "hosp" variable has been renamed "admissions"
+- Additional graph to clarify trends in data (Figure [[fig-inctrends]])
+
 * Results
 
 
 ** Overall trends
 
-Overall trends in confirmed cases continue to increase in both Sheffield and the UK (see Figure [[fig-trends]]). A decrease in the rate of growth was visible locally after the lockdown (red dashed line).
+ A decrease in the rate of growth was visible locally after the lockdown (red dashed line Figure [[fig-trends]]). Data on the daily incidence of quantities used as calibration targets are shown in Figure [[fig-inctrends]].
 
  #+CAPTION: Cumulative confirmed cases nationally and locally. Red dashed line is where a change in gradient is visible shortly after lockdown
  #+attr_html: :width 100%
  #+name: fig-trends
  #+attr_latex: :width \textwidth :placement [h!]
  [[./figs/Trends.pdf]]
+
+
+ #+CAPTION: Data on daily incidence of quantities used as calibration targets
+ #+attr_html: :width 100%
+ #+name: fig-inctrends
+ #+attr_latex: :width \textwidth :placement [h!]
+ [[./figs/IncData.pdf]]
 
 
 ** Parameter estimates

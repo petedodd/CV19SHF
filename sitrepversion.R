@@ -445,10 +445,20 @@ inc <- tgts[,.(date,cases,deaths,hosp=newhosp)]
 inc <- melt(inc,id = 'date')
 inc[,c('mid','confirmed','quantity','hi','lo'):=list(value,NA,variable,NA,NA)]
 
+GPi <- ggplot(inc,aes(date,mid,col=quantity)) + geom_point() +
+  geom_line() + scale_y_sqrt() +
+  xlab('Date') + ylab('Daily incidence of quantity (square root scale)') + 
+  theme(legend.position = c(0.15, 0.75),legend.direction='vertical')
+
+pnm <- glue('plots') + '/2incData_' + td + '.pdf'       #
+ggsave(GPi,filename = pnm,w=7,h=5)
+ggsave(GPi,filename = here::here('figs/IncData.pdf'),w=7,h=5)
+
+
 ## incidence plot
 GP3ud <- ggplot(SUM[date<=dmy('15/07/2020') & !quantity %in% c('ccadm','truecases')],
               aes(date,mid,col=quantity,lty=confirmed)) +
-  geom_point(data=inc) +
+  geom_point(data=inc) + 
   geom_line() +
   geom_ribbon(aes(ymin=lo,ymax=hi,fill=confirmed),alpha=.2,col=NA)+
   theme(axis.text.x = element_text(angle = 45, hjust = 1))  +
@@ -581,6 +591,7 @@ fn <- glue(here::here('data'))+ '/PUM_' + td + '.Rdata'
 save(PUM,file=fn)
 fn <- glue(here::here('data'))+ '/SUM_' + td + '.Rdata'
 save(SUM,file=fn)
+PUM[quantity=='hosp',quantity:='admissions']
 fwrite(PUM[date<=dmy('15/07/2020') ],file=here::here('data/PrevData.csv'))
 fwrite(SUM[date<=dmy('15/07/2020') & !quantity %in% c('ccadm','truecases')],
        file=here::here('data/IncData.csv'))
