@@ -29,7 +29,7 @@ For the first time the net reproduction number is estimated to be around 1 and t
 
 <2020-04-08 Wed>
 
-- In output PrevData.csv, "hosp" variable has been renamed "admissions"
+- In output IncData.csv, "hosp" variable has been renamed "admissions"
 - Additional graph to clarify trends in data (Figure [[fig-inctrends]])
 
 * Results

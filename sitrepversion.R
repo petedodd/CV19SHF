@@ -591,7 +591,7 @@ fn <- glue(here::here('data'))+ '/PUM_' + td + '.Rdata'
 save(PUM,file=fn)
 fn <- glue(here::here('data'))+ '/SUM_' + td + '.Rdata'
 save(SUM,file=fn)
-PUM[quantity=='hosp',quantity:='admissions']
+SUM[quantity=='hosp',quantity:='admissions']
 fwrite(PUM[date<=dmy('15/07/2020') ],file=here::here('data/PrevData.csv'))
 fwrite(SUM[date<=dmy('15/07/2020') & !quantity %in% c('ccadm','truecases')],
        file=here::here('data/IncData.csv'))
