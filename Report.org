@@ -18,13 +18,13 @@ The most recent sitrep data used in this report is from:
 
 * Summary
 
-For the first time the net reproduction number is estimated to be around 1 and the peak in admissions and deaths forecast during the next week, and the peak in resource use being forecast around the start of May. Some of this may be due to the anomalously low new case count for today.
+The net reproduction number is estimated to be around or below 1 and the peak in admissions and deaths forecast from mid-April to start-May, and the peak in resource use being forecast around the start of May. Some of this may be due to the anomalously low new case count for today.
 
 ** Recent changes
 
 <2020-04-07 Tue>
 
-- _Infectious period changed_ from 4.6 to 2.9 days, following Kucharski et al [[https://doi.org/10.1016/S1473-3099(20)30144-4]]. This leads to somewhat lower initial $R_0$ estimates (nearer 3 than 4), and lower peaks.
+- _Infectious period changed_ from 4.6 to 2.9 days, following [[https://doi.org/10.1016/S1473-3099(20)30144-4][Kucharski et al]]. This leads to somewhat lower initial $R_0$ estimates (nearer 3 than 4), and lower peaks.
 - _Change in sensitivity analysis on proportion of cases confirmed_ from $2\times$ basecase (15%) to half of basecase (3.75%), since the 15% assumption consistently fits badly to mortality data, and feels unrealistic. The 3.75% analysis has earlier peaks than base case by 2-3 weeks.
 
 <2020-04-08 Wed>
@@ -60,7 +60,7 @@ Our estimate for $R_0$ with 7.5% of cases assumed confirmed is:
 Our estimate for $R_0$ with 3.8% of cases assumed confirmed is:
 #+INCLUDE: "./data/Rzero2.txt"
 
-This compares with an $R_0$ estimate for the UK in the Imperial 13 report of a little below 4.
+This compares with an $R_0$ estimate for the UK in the  [[https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-13-europe-npi-impact/][Imperial report 13]] report of a little below 4.
 
 Our estimate for the reduction in transmission from lockdown with 7.5% of cases assumed confirmed is:
 #+INCLUDE: "./data/Effect.txt"
@@ -68,7 +68,7 @@ percent; with 3.8% of cases confirmed it is:
 #+INCLUDE: "./data/Effect2.txt"
 percent.
 
-This is within the uncertain estimate of lockdown efficacy for 11 European countries in the Imperial report 13.
+This is within the uncertain estimate of lockdown efficacy for 11 European countries in the [[https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-13-europe-npi-impact/][Imperial report 13]] & the effect estimates based on changes in social contact patterns reported in an [[https://cmmid.github.io/topics/covid19/current-patterns-transmission/comix-impact-of-physical-distance-measures-on-transmission-in-the-UK.html][LSHTM study]].
 
 This implies an estimate for the current net reproduction number with 7.5% of cases assumed confirmed is:
 #+INCLUDE: "./data/Rnet.txt"
@@ -81,7 +81,7 @@ percecnt; with 3.8% of cases confirmed it is:
 #+INCLUDE: "./data/HFR2.txt"
 percent.
 
-This compares with an estimate using age-specific rates from literature, weigted by Sheffield demography:
+This compares with an estimate using age-specific rates from literature, weighted by Sheffield demography of
 #+INCLUDE: "./data/HFRlit.txt"
 percent.
 
@@ -238,7 +238,7 @@ $$\frac{\mathrm{d}(hosp)}{\mathrm{d}t} = sick/d_h - hosp/d_{h2o}$$
 where the mean stay $d_{h2o}$ is determined in Section \ref{delays}. The incidence of hospitalisation is $sick/d_h$.
 
 
-A likelihood is specified by assuming Poisson counts for daily case, admission and death counts, with parameters given by the rates from the ODEs. Parameters corresponding to $R_0$, the reduction in $\beta$ due to lockdown, the initial number infected, and the proportion of cases hospitalised ($HR$ above) were fitted. Uncertainty intervals were constructed from 200 simulations of parameters drawn from a multivariate normal to the likelihood.
+A likelihood is specified by assuming Poisson counts for daily case, admission and death counts, with parameters given by the rates from the ODEs. Parameters corresponding to $R_0$, the reduction in $\beta$ due to lockdown, the initial number infected, and the proportion of cases hospitalised ($HR$ above) were fitted. Uncertainty intervals were constructed from 200 simulations of parameters drawn from a multivariate normal approximation to the likelihood.
 
 
 
