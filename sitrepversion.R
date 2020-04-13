@@ -13,6 +13,7 @@ library(scales)
 library(odin)
 library(MASS)
 library(curl)
+library(ggrepel)
 
 ## --- set-up & utilities
 ## make sub directories
@@ -445,8 +446,9 @@ inc <- tgts[,.(date,cases,deaths,hosp=newhosp)]
 inc <- melt(inc,id = 'date')
 inc[,c('mid','confirmed','quantity','hi','lo'):=list(value,NA,variable,NA,NA)]
 
-GPi <- ggplot(inc,aes(date,mid,col=quantity)) + geom_point() +
+GPi <- ggplot(inc,aes(date,mid,col=quantity,label=mid)) + geom_point() +
   geom_line() + scale_y_sqrt() +
+  geom_text_repel(show.legend = FALSE)+
   xlab('Date') + ylab('Daily incidence of quantity (square root scale)') + 
   theme(legend.position = c(0.15, 0.75),legend.direction='vertical')
 
