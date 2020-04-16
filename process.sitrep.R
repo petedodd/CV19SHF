@@ -71,13 +71,21 @@ outr <- outm[,.(value=sum(value)),by=date]
 stay <- outr[date>max(date)-days(7),.(mid=mean(1/value),sd=sd(1/value))]
 stay <- as.list(stay)
 
+## out rate
+outr[is.finite(value),as.integer(date)]
+md <- loess( value ~ as.integer(date), outr[is.finite(value)] )
+outr[,v:=predict(md,newdata = as.integer(outr$date))]
+GP <- ggplot(outr,aes(date,value)) + geom_point() + geom_line(aes(date,v)) + xlab('Date') + ylab('Rate of exiting hospital per day (death & discharge)')
+ggsave(GP,file=here::here('figs/outrate.pdf'))
+
+
+
 ## stay fatality rates
 n1 <- out[,sum(`Number of Patients Deceased with COVID 19 in Last 24HRS`)]
 n2 <- out[,sum(`Number of COVID 19 Patients Discharges past 24HRS`)]
 sfr <- list(sfr=n1/(n1+n2),n1=n1,n2=n2)
 
-hosparms <- c(stay,sfr)
-
+hosparms <- c(stay,sfr,outr=outr[!is.na(v)])
 save(hosparms,file=here::here('data/parm.hosparms.Rdata'))
 cat(round(stay$mid,d=1),file=here::here('data/meanstay.txt'))
 
