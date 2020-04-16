@@ -18,7 +18,7 @@ The most recent sitrep data used in this report is from:
 
 * Summary
 
-The net reproduction number is estimated to be around or below 1 and the peak in admissions and deaths forecast from mid-April to start-May, and the peak in resource use being forecast around the start of May. Some of this may be due to the anomalously low new case count for today.
+The net reproduction number is estimated to be around or below 1 and the peak in admissions and deaths forecast from mid-April, and the peak in resource use being forecast around the mid-April to start-May. 
 
 ** Recent changes
 
@@ -123,7 +123,8 @@ We used estimates of hospital stay length and fractions of COVID patients in dif
 
 The code for the analyses and this report are updated and available at [[https://github.com/petedodd/CV19SHF]].
 
-The updated report itself and also the CSV files of estimates are available at [[https://drive.google.com/drive/folders/1QWzRUdWBDDLnVH8UX5SFe1Gp9_Dd69iS?usp=sharing]].
+The updated report itself and also the CSV files of estimates are available at:
+#+INCLUDE: "./data/dataurl.txt"
 
 Data sources and analyses for the model are described in the following subsections. The model specification and fitting is described in Section \ref{sec-appendix}.
 
