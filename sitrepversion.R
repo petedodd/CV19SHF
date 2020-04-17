@@ -187,8 +187,8 @@ inhsp <- DM[variable%in%vrs[1:4],.(inhosp=sum(value)),by=date]
 disch <- DM[variable==vrs[10],.(disch=(value)),by=date]
 tgts <- merge(tgts,disch,by='date',all.x=TRUE)
 tgts <- merge(pnts[,.(date,cases)],tgts,by='date',all=TRUE)
-tmp1 <- tgts[date==max(date)]           #keep NA in case of mismatch on last day
-tgts <- tgts[date<max(date)]
+tmp1 <- tgts[date>=max(date)-days(7)]    #keep NA in case of mismatch on last week
+tgts <- tgts[date<max(date)-days(7)]
 for (j in names(tgts))
   set(tgts,which(is.na(tgts[[j]])),j,0)
 tgts <- rbind(tgts,tmp1)
