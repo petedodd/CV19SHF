@@ -18,19 +18,23 @@ The most recent sitrep data used in this report is from:
 
 * Summary
 
-The net reproduction number is estimated to be around or below 1 and the peak in admissions and deaths forecast from mid-April, and the peak in resource use being forecast around the mid-April to start-May. 
+The effective reproduction number is estimated to be below 1; the peak in admissions and cases is estimated to be in the recent past and the deaths and bed use are forecast to be decreasing from now. The change in PHE case data seems to have revised down the estimate of pre-intervention $R_0$ to nearer 3 then 4.
 
-** Recent changes
+** Recent changes (most recent first)
+
+<2020-04-20 Mon>
+- Changing to use revised PHE case data (ie by test date). More work is now in the processing script, and the case data need to be manually downloaded and placed in the same folder as the most recent sitrep.
+
+<2020-04-08 Wed>
+
+- In output IncData.csv, "hosp" variable has been renamed "admissions"
+- Additional graph to clarify trends in data (Figure [[fig-inctrends]])
 
 <2020-04-07 Tue>
 
 - _Infectious period changed_ from 4.6 to 2.9 days, following [[https://doi.org/10.1016/S1473-3099(20)30144-4][Kucharski et al]]. This leads to somewhat lower initial $R_0$ estimates (nearer 3 than 4), and lower peaks.
 - _Change in sensitivity analysis on proportion of cases confirmed_ from $2\times$ basecase (15%) to half of basecase (3.75%), since the 15% assumption consistently fits badly to mortality data, and feels unrealistic. The 3.75% analysis has earlier peaks than base case by 2-3 weeks.
 
-<2020-04-08 Wed>
-
-- In output IncData.csv, "hosp" variable has been renamed "admissions"
-- Additional graph to clarify trends in data (Figure [[fig-inctrends]])
 
 * Results
 
