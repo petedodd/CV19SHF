@@ -18,7 +18,7 @@ The most recent sitrep data used in this report is from:
 
 * Summary
 
-The effective reproduction number is estimated to be below 1; the peak in admissions and cases is estimated to be in the recent past and the deaths and bed use are forecast to be decreasing from now. The change in PHE case data seems to have revised down the estimate of pre-intervention $R_0$ to nearer 3 then 4.
+The effective reproduction number is estimated to be below 1; the peak in admissions and cases is estimated to be in the recent past and the deaths and bed use are forecast to be decreasing from between now and the start of May. The change in PHE case data seems to have revised down the estimate of pre-intervention $R_0$ to nearer 3 then 4.
 
 ** Recent changes (most recent first)
 

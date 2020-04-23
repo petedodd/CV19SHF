@@ -17,14 +17,14 @@ td <- getdate()                         #date stamp
 ## =============== CASE DATA ===============
 ## including new case data download here
 ## https://coronavirus.data.gov.uk/#
-## this needs doing manually and coronavirus-cases.csv placing in sitrep folder
+## this needs doing manually and coronavirus-cases_latest.csv placing in sitrep folder
 
 
 fn <- glue(here::here('data'))+ '/UKD_' + td + '.Rdata'
 if(file.exists(fn)){
   load(fn)
 } else {
-  UKD <- fread(here::here("../sitrep/coronavirus-cases.csv"))
+  UKD <- fread(here::here("../sitrep/coronavirus-cases_latest.csv"))
   save(UKD,file=fn)
 }
 
@@ -70,7 +70,6 @@ growth[,txt:=format(round(doubling, 1), nsmall = 1)]
 growth[,txt:=paste0('x2 every ',txt,' days\n(',
                     format(round(doubling.lo, 1), nsmall = 1),' to ',
                     format(round(doubling.hi, 1), nsmall = 1),')')]
-
 
 
 ## plot annotation locations & filename
@@ -146,6 +145,7 @@ names(D)[1] <- 'date'
 D[,date:=dmy(date)]
 
 DM <- melt(D,id='date')
+
 save(DM,file=here::here('data/DM.Rdata'))
 
 ## make calibration target file from these
@@ -163,6 +163,7 @@ tgts <- tgts[date<max(date)-days(7)]
 for (j in names(tgts))
   set(tgts,which(is.na(tgts[[j]])),j,0)
 tgts <- rbind(tgts,tmp1)
+
 save(tgts,file=here::here('data/tgts.Rdata'))
 
 ## lab testing
