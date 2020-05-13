@@ -18,9 +18,19 @@ The most recent sitrep data used in this report is from:
 
 * Summary
 
-The effective reproduction number is estimated to be below 1; the peak in admissions and cases is estimated to be in the recent past and the deaths and bed use are forecast to be decreasing from between now and the start of May. The change in PHE case data seems to have revised down the estimate of pre-intervention $R_0$ to nearer 3 then 4.
+The effective reproduction number is estimated to be below 1; the peak in admissions and cases is estimated to be in the recent past and the deaths and bed use are forecast to be decreasing from between now and the start of May. 
 
 ** Recent changes (most recent first)
+
+<2020-05-08 Fri>
+- Use of lockdown date as change point
+- Change to trend graph: including only Sheffield and doubling prior to lockdown
+- After 2020-04-26, COVID bed counts are based on inflow/outflows
+- Bed proportions based on data between 2020-04-07 and 2020-04-21
+- O2 proportions based on data between 2020-04-09 and 2020-04-25
+- Improved delay to death/hospitalisation calculation
+- Discharge from hospital rate now changes over time
+
 
 <2020-04-20 Mon>
 - Changing to use revised PHE case data (ie by test date). More work is now in the processing script, and the case data need to be manually downloaded and placed in the same folder as the most recent sitrep.
@@ -81,7 +91,7 @@ This implies an estimate for the current net reproduction number with 7.5% of ca
 
 In addition we estimate the fraction of cases to needing hospitalisation to be:
 #+INCLUDE: "./data/HFR.txt"
-percecnt; with 3.8% of cases confirmed it is: 
+percent; with 3.8% of cases confirmed it is: 
 #+INCLUDE: "./data/HFR2.txt"
 percent.
 
@@ -167,7 +177,7 @@ NB we have take hospital admission (in the sitrep data) to include admission of 
 
 *** Hospital stays
 
-To determine mean hospital stays related to COVID locally, we calculated the mean rates of discharge and death among COVID inpatients from the sitrep data. There are trends in discharge rates, see Figure [[fig-outrates]]; the most recent 7 days were used. The mean hospital stay was determined as the inverse of the total outrates as
+To determine mean hospital stays related to COVID locally, we calculated the mean rates of discharge and death among COVID inpatients from the sitrep data. There are trends in discharge rates, see Figure [[fig-outrates]]. A smoothed rate of discharge over time was used, see Figure [[fig-outrates2]], with last-one-carried forward for forecasts.
  #+INCLUDE: "./data/meanstay.txt"
 days. This compares with 10 days for critical care patients and 7 days for other patients assumed in Imperial report 9.
 
@@ -177,6 +187,16 @@ days. This compares with 10 days for critical care patients and 7 days for other
  #+name: fig-outrates
  #+attr_latex: :width \textwidth :placement [h!]
  [[./figs/OutRates.pdf]]
+
+
+
+
+
+ #+CAPTION: Smoothed rates of discharge among COVID inpatients
+ #+attr_html: :width 100%
+ #+name: fig-outrates2
+ #+attr_latex: :width \textwidth :placement [h!]
+ [[./figs/outrate.pdf]]
 
 
 ** Bed type and breathing assistance

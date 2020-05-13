@@ -48,7 +48,7 @@ lcl <- 'Sheffield'                      #locale
 lkd <- '23/03/2020'                     #lockdown date
 ## lkdsig <- '28/03/2020'                  #visible in data
 lkdsig <- lkd #NEW '28/03/2020'                  #visible in data
-##before intervention signal (or consider 16=actual lockdown)
+#before intervention signal (or consider 16=actual lockdown)
 (lkdnpt <- which(pnts$date==dmy(lkdsig)))
 
 ## parameters etc for later
@@ -122,50 +122,50 @@ seirid <- odin::odin({
   dim(y) <- length(tt)
 },target='r')
 
-## version with dynamic stay time
-seirid2 <- odin::odin({
-  initial(S) <- N-I0 - Rinit
-  initial(E) <- I0/2
-  initial(I) <- I0/2
-  initial(R) <- Rinit
-  initial(dying) <- D0
-  initial(sick) <- K0
-  initial(hosp) <- 0
-  deriv(S) <- -beta*S*I/N
-  deriv(E) <- beta*S*I/N - E*nu
-  deriv(I) <- E*nu - I*nu2
-  deriv(R) <- +I*nu2
-  deriv(sick) <- E*nu*HFR - sick/d2h    #waiting state for hospitalised fraction
-  deriv(dying) <- E*nu*IFR - dying/d2d #copy state to capture delay to death
-  deriv(hosp) <- sick/d2h - hosp/h2o      #prevalence in hosp
-  output(incidence) <- E*nu             #linked to case detection
-  output(deaths) <- dying/d2d
-  output(admns) <- sick/d2h
-  output(disch) <- hosp/h2o
-  nu <- 1/lat
-  nu2 <- 1/pinf
-  beta <- R0*nu2*z
-  lat <- user(5.1)                       #latent time
-  pinf <- user(2.9)                      #infectious period
-  I0 <- user(361)                        #initial state
-  Rinit <- user(5)                      #initial recovered
-  R0 <- user(2.6)
-  N <- user(616210)
-  d2d <- user(14)                         #delay case to death
-  d2h <- user(10)                         #delay to hospn
-  IFR <- user(1e-2)                       #IFR
-  HFR <- user(1e-2)                       #hosp fraction
-  D0 <- user(1)
-  K0 <- user(1)
-  z <- interpolate(tt, y)
-  h2o <- interpolate(tt, y2o)
-  tt[] <- user()
-  y[] <- user()
-  y2o[] <- user()
-  dim(tt) <- user()
-  dim(y) <- length(tt)
-  dim(y2o) <- length(tt)
-},target='r')
+## ## version with dynamic stay time
+## seirid2 <- odin::odin({
+##   initial(S) <- N-I0 - Rinit
+##   initial(E) <- I0/2
+##   initial(I) <- I0/2
+##   initial(R) <- Rinit
+##   initial(dying) <- D0
+##   initial(sick) <- K0
+##   initial(hosp) <- 0
+##   deriv(S) <- -beta*S*I/N
+##   deriv(E) <- beta*S*I/N - E*nu
+##   deriv(I) <- E*nu - I*nu2
+##   deriv(R) <- +I*nu2
+##   deriv(sick) <- E*nu*HFR - sick/d2h    #waiting state for hospitalised fraction
+##   deriv(dying) <- E*nu*IFR - dying/d2d #copy state to capture delay to death
+##   deriv(hosp) <- sick/d2h - hosp/h2o      #prevalence in hosp
+##   output(incidence) <- E*nu             #linked to case detection
+##   output(deaths) <- dying/d2d
+##   output(admns) <- sick/d2h
+##   output(disch) <- hosp/h2o
+##   nu <- 1/lat
+##   nu2 <- 1/pinf
+##   beta <- R0*nu2*z
+##   lat <- user(5.1)                       #latent time
+##   pinf <- user(2.9)                      #infectious period
+##   I0 <- user(361)                        #initial state
+##   Rinit <- user(5)                      #initial recovered
+##   R0 <- user(2.6)
+##   N <- user(616210)
+##   d2d <- user(14)                         #delay case to death
+##   d2h <- user(10)                         #delay to hospn
+##   IFR <- user(1e-2)                       #IFR
+##   HFR <- user(1e-2)                       #hosp fraction
+##   D0 <- user(1)
+##   K0 <- user(1)
+##   z <- interpolate(tt, y)
+##   h2o <- interpolate(tt, y2o)
+##   tt[] <- user()
+##   y[] <- user()
+##   y2o[] <- user()
+##   dim(tt) <- user()
+##   dim(y) <- length(tt)
+##   dim(y2o) <- length(tt)
+## },target='r')
 
 
 ## testing
@@ -200,11 +200,8 @@ tgts$cases
 dorun <- function(x){
   y[1:lkdnpt] <- 1
   y[(1+lkdnpt):length(y)] <- exp(x[3])
-  ## md <- seirid(I0=exp(x[1]),R0=exp(x[2]),Rinit = Rinit/UR,y=y,tt=tz,
-  ##              d2h=delays$dC2H,d2d=delays$dC2D,h2o=hosparms$mid,
-  ##              IFR=propd,HFR=exp(x[4]))
-  md <- seirid2(I0=exp(x[1]),R0=exp(x[2]),Rinit = Rinit/UR,y=y,tt=tz,
-               d2h=delays$dC2H,d2d=delays$dC2D,y2o=y2o,
+  md <- seirid(I0=exp(x[1]),R0=exp(x[2]),Rinit = Rinit/UR,y=y,tt=tz,
+               d2h=delays$dC2H,d2d=delays$dC2D,h2o=hosparms$mid,
                IFR=propd,HFR=exp(x[4]))
   md$run(tz)
 }
@@ -271,14 +268,10 @@ xx <- resi$par
 seiridLL(xx)
 
 ## make dates for the outputs
-## dtz <- rep(dmy(lkdsig),length(tz))
-## shift <- seq(from=-24,by=1,length.out=length(tz))
-## which(shift==0)
-## dtz <- dtz + days(shift)
-## tmap <- data.table(t=tz,date=dtz)
-
-## new version
-dtz <- pnts$date[1] + days(tz+3)        #NOTE - figure this out
+dtz <- rep(dmy(lkdsig),length(tz))
+shift <- seq(from=-24,by=1,length.out=length(tz))
+which(shift==0)
+dtz <- dtz + days(shift)
 tmap <- data.table(t=tz,date=dtz)
 
 ## MLE for basecase as test
@@ -485,30 +478,25 @@ PUM <- PU[,.(mid=mean(value),#quantile(value,0.5),
              lo=quantile(value,0.025)),
           by=.(date,quantity,confirmed)]
 
-
-load(file=here::here('data/out.Rdata'))
-
 ## cc & hosp etc
 IDUP <- DM[variable==vrs[3],.(mid=value),by=date] #IDU
 IDUP[,quantity:='IDU']
 HDUP <- DM[variable==vrs[1],.(mid=value),by=date] #HDU
 HDUP[,quantity:='HDU']
-MP <- DM[variable==vrs[11],.(mid=value),by=date] #MV - new
+MP <- DM[variable==vrs[7],.(mid=value),by=date] #MV
 MP[,quantity:='Mechanical']
-NP <- DM[variable==vrs[10],.(mid=value),by=date] #NIV - new
+NP <- DM[variable==vrs[6],.(mid=value),by=date] #NIV
 NP[,quantity:='NIV']
-OP <- DM[variable==vrs[9],.(mid=value),by=date] #O2 - new
+OP <- DM[variable==vrs[5],.(mid=value),by=date] #O2
 OP[,quantity:='O2']
 RP <- DM[variable==vrs[4],.(mid=value),by=date] #other beds
 RP[,quantity:='other']
-## hosp <- DM[variable %in% vrs[1:4],.(mid=sum(value)),by=date]
-hosp <- out[,.(date,mid=beds)]          #NEW
+hosp <- DM[variable %in% vrs[1:4],.(mid=sum(value)),by=date]
 hosp[,quantity:='hosp']
 ccadm <- DM[variable == vrs[2],.(mid=(value)),by=date] #NOTE CC = ITU assumed
 ccadm[,quantity:='ITU']
 prev <- rbindlist(list(IDUP,HDUP,MP,NP,OP,RP,hosp,ccadm))
 prev[,confirmed:=NA]
-prev[date>'2020-04-26' & mid==0, mid:=NA]
 
 PUM <- PUM[quantity!='t']
 
