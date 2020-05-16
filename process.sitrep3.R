@@ -129,7 +129,9 @@ ggsave(GP1,file=here::here('figs/Trends.pdf'),w=7,h=5)
 
 
 ## make inference targets
-UKS <- UKD[UTLA==lcl,.(cases=confirminc,date=ymd(date))]
+UKS <- UKD[UTLA==lcl &  & `Area type`=='Upper tier local authority',
+           .(cases=confirminc,date=ymd(date))]
+UKS <- unique(UKS)
 UKS[,dta:=TRUE]
 UKS[,Population:='Sheffield']
 dts <- min(UKS$date)
@@ -145,16 +147,18 @@ SF[,ddys:=dys-ldy]
 ldt <- SF[ddys==0,cases]
 who1 <- SF[,which(ddys==0)]              #last one
 SF$cases <- as.numeric(SF$cases)
+
 save(SF,file=here::here('data/SF.Rdata'))
 
 ## case targets
-tmp <- UKD[UTLA=='Sheffield']
+tmp <- UKD[UTLA=='Sheffield' & `Area type`=='Upper tier local authority']
 tmp[,date:=ymd(date)]
 pnts <- UKS[dta==TRUE]
 pnts[,c('quantity','growth','grp'):=list('cases',NA,1)]
 pnts[,date:=(date)]
 pnts[,value:=cases]
 pnts <- merge(pnts,tmp[,.(date,confirm)],by='date')
+
 save(pnts,file=here::here('data/pnts.Rdata'))
 
 
